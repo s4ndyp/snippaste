@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Trash2, Copy, AlertTriangle, FileText, Settings, Pencil } from 'lucide-react'; 
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, Plus, Trash2, Copy, AlertTriangle, FileText, Settings, Pencil, LogIn, HardDrive } from 'lucide-react'; 
 
 // --- Configuratie en Standaardwaarden ---
 
@@ -18,7 +18,8 @@ const cardColorOptions = [
 ];
 const DEFAULT_COLOR = cardColorOptions[0].name;
 const defaultColumnTitles = ['Alle Snippets', 'In Uitvoering', 'Review', 'Voltooid'];
-const PERSISTENCE_OPTIONS = ['localStorage', 'api']; // API is nog niet functioneel, alleen Local Storage
+const PERSISTENCE_OPTIONS = ['localStorage', 'api']; 
+const API_ENDPOINT = 'snippets'; // Het endpoint in de API Gateway
 
 // Functie voor kopiëren naar klembord
 const copyToClipboard = (text) => {
@@ -37,86 +38,227 @@ const copyToClipboard = (text) => {
     }
 };
 
-// --- Lokale Opslag Functies (simuleren asynchrone API calls) ---
+// --- API Persistentie Laag (Custom Hook) ---
 
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const useApiPersistence = (settings, authData) => {
+    
+    // Base URL voor de API-aanroepen
+    const baseUrl = useMemo(() => {
+        if (!settings.api_url) return null;
+        // Zorg ervoor dat de URL eindigt op een '/' of niet
+        return settings.api_url.replace(/\/+$/, '');
+    }, [settings.api_url]);
 
-const loadInitialData = async (persistenceType) => {
-    await delay(300); // Simuleer netwerkvertraging
+    // Async utility om fetches met auth te doen
+    const apiFetch = useCallback(async (path, method = 'GET', body = null) => {
+        if (!baseUrl || !authData.token) {
+            throw new Error("API URL of Auth Token ontbreekt.");
+        }
 
-    if (persistenceType === 'localStorage') {
+        const url = `${baseUrl}/api/${path}`;
+        
+        // Exponentiële backoff retry
+        for (let i = 0; i < 3; i++) {
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authData.token}`,
+                    },
+                    body: body ? JSON.stringify(body) : null,
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                     // Gooi een specifieke Auth Error
+                    throw new Error("401: Authenticatie mislukt. Log opnieuw in.");
+                }
+                
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    throw new Error(`API Fout (${response.status}): ${errorBody.error || response.statusText}`);
+                }
+                
+                // Bij DELETE (204) is er geen body
+                if (method === 'DELETE' && response.status === 204) {
+                    return {};
+                }
+                
+                return await response.json();
+
+            } catch (error) {
+                // Als het een Auth Error is, gooi het dan meteen door
+                if (error.message.startsWith('401:')) throw error;
+
+                // Bij de laatste poging, gooi de fout door
+                if (i === 2) throw error; 
+
+                // Wacht met exponentiële backoff
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+            }
+        }
+    }, [baseUrl, authData.token]);
+
+    // Functie om in te loggen
+    const login = useCallback(async (username, password) => {
+        if (!baseUrl) throw new Error("API URL is niet ingesteld.");
+
+        const url = `${baseUrl}/api/auth/login`;
+
         try {
-            const storedSnippets = JSON.parse(localStorage.getItem(SNIPPETS_STORAGE_KEY) || '[]');
-            const storedSettings = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}');
-            
-            let snippets = storedSnippets;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
 
-            // Initialiseer settings
-            const settings = {
-                columnTitles: storedSettings.columnTitles || defaultColumnTitles,
-                persistenceType: storedSettings.persistenceType || 'localStorage',
-            };
-
-            // Voeg voorbeeld data toe als opslag leeg is
-            if (snippets.length === 0) {
-                 const initialSnippets = [
-                    {
-                        id: crypto.randomUUID(),
-                        title: 'React Hook - useTitle',
-                        code: 'import { useEffect } from "react";\n\nfunction useTitle(title) {\n  useEffect(() => {\n    const prevTitle = document.title;\n    document.title = title;\n    return () => { document.title = prevTitle; };\n  }, [title]);\n}',
-                        color: 'Blauw',
-                        category: settings.columnTitles[0],
-                        createdAt: Date.now(),
-                    },
-                    {
-                        id: crypto.randomUUID(),
-                        title: 'Tailwind Card Layout',
-                        code: '<div class="bg-gray-700 p-4 rounded-lg shadow-xl md:flex md:space-x-4">\n  <div class="flex-shrink-0">\n    <img class="h-12 w-12 rounded-full" src="..." alt="Profile">\n  </div>\n  <div>\n    <div class="text-xl font-medium text-white">Project X</div>\n    <p class="text-gray-400">Minimalistisch en responsief.</p>\n  </div>\n</div>',
-                        color: 'Groen',
-                        category: settings.columnTitles[1],
-                        createdAt: Date.now() + 1,
-                    },
-                    {
-                        id: crypto.randomUUID(),
-                        title: 'Python Dict Sort',
-                        code: 'data = {"c": 3, "a": 1, "b": 2}\n\n# Sort op sleutel\nsorted_keys = dict(sorted(data.items()))\nprint(sorted_keys)\n\n# Sort op waarde\nsorted_values = dict(sorted(data.items(), key=lambda item: item[1]))\nprint(sorted_values)',
-                        color: 'Paars',
-                        category: settings.columnTitles[0],
-                        createdAt: Date.now() + 2,
-                    }
-                ];
-                localStorage.setItem(SNIPPETS_STORAGE_KEY, JSON.stringify(initialSnippets));
-                snippets = initialSnippets;
+            if (!response.ok) {
+                const errorBody = await response.json();
+                throw new Error(errorBody.error || "Login mislukt.");
             }
             
-            // Sorteer op createdAt
-            snippets.sort((a, b) => b.createdAt - a.createdAt);
-
-            return { snippets, settings };
+            const result = await response.json();
+            // Retourneert de JWT
+            return { token: result.token, expiresAt: Date.now() + (result.expires_in_minutes * 60 * 1000) }; 
 
         } catch (error) {
-            console.error("Fout bij het laden uit Local Storage:", error);
-            return { snippets: [], settings: { columnTitles: defaultColumnTitles, persistenceType: 'localStorage' } };
+            throw error;
         }
-    } else {
-        // MOCK API: Log de actie maar retourneer geen data
-        console.log(`[API MOCK] Gegevens ophalen via API is nog niet geïmplementeerd.`);
+    }, [baseUrl]);
+
+    // Functie om data op te halen
+    const loadData = useCallback(async () => {
+        const result = await apiFetch(`${API_ENDPOINT}?_limit=1000`);
+        // API Gateway retourneert een array van { id: '...', data: { document } }
+        return result.map(item => ({
+            id: item.id,
+            title: item.data.title,
+            code: item.data.code,
+            color: item.data.color,
+            category: item.data.category,
+            // Gebruik meta.created_at voor sortering, fallback naar Date.now()
+            createdAt: item.data.meta?.created_at ? new Date(item.data.meta.created_at).getTime() : Date.now(),
+        }));
+    }, [apiFetch]);
+    
+    // Functie om een snippet op te slaan/updaten
+    const saveSnippet = useCallback(async (snippet) => {
+        const { id, title, code, color, category } = snippet;
+        
+        // De API verwacht alleen de relevante velden voor de opslag
+        const apiPayload = { title, code, color, category }; 
+        
+        if (id) {
+            // PUT: Update bestaande
+            const result = await apiFetch(`${API_ENDPOINT}/${id}`, 'PUT', apiPayload);
+            return {
+                ...snippet,
+                id: result.id,
+                // Update de createdAt om de volgorde te behouden/wijzigen
+                createdAt: result.data.meta?.updated_at ? new Date(result.data.meta.updated_at).getTime() : Date.now(),
+            }; 
+        } else {
+            // POST: Nieuwe aanmaken
+            const result = await apiFetch(API_ENDPOINT, 'POST', apiPayload);
+            return {
+                ...snippet,
+                id: result.id,
+                createdAt: result.data.meta?.created_at ? new Date(result.data.meta.created_at).getTime() : Date.now(),
+            };
+        }
+    }, [apiFetch]);
+    
+    // Functie om te verwijderen
+    const deleteSnippet = useCallback(async (id) => {
+        await apiFetch(`${API_ENDPOINT}/${id}`, 'DELETE');
+        return true;
+    }, [apiFetch]);
+    
+    // De API laag retourneert de CRUD-methoden
+    return useMemo(() => ({ login, loadData, saveSnippet, deleteSnippet }), [login, loadData, saveSnippet, deleteSnippet]);
+};
+
+
+// --- Lokale Opslag Functies ---
+
+// Functie om initiële data te laden (Local Storage versie)
+const loadLocalInitialData = async () => {
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    await delay(300); // Simuleer vertraging
+    
+    try {
+        const storedSnippets = JSON.parse(localStorage.getItem(SNIPPETS_STORAGE_KEY) || '[]');
+        const storedSettings = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}');
+        
+        let snippets = storedSnippets;
+
+        // Initialiseer settings, inclusief nieuwe API velden
+        const settings = {
+            columnTitles: storedSettings.columnTitles || defaultColumnTitles,
+            persistenceType: storedSettings.persistenceType || 'localStorage',
+            api_url: storedSettings.api_url || 'http://localhost:8080', // Standaard API URL
+            api_username: storedSettings.api_username || '',
+            api_token: storedSettings.api_token || null, // JWT token
+        };
+
+        // Voeg voorbeeld data toe als opslag leeg is
+        if (snippets.length === 0 && settings.persistenceType === 'localStorage') {
+             const initialSnippets = [
+                {
+                    id: crypto.randomUUID(),
+                    title: 'React Hook - useTitle',
+                    code: 'import { useEffect } from "react";\n\nfunction useTitle(title) {\n  useEffect(() => {\n    const prevTitle = document.title;\n    document.title = title;\n    return () => { document.title = prevTitle; };\n  }, [title]);\n}',
+                    color: 'Blauw',
+                    category: settings.columnTitles[0],
+                    createdAt: Date.now(),
+                },
+                {
+                    id: crypto.randomUUID(),
+                    title: 'Tailwind Card Layout',
+                    code: '<div class="bg-gray-700 p-4 rounded-lg shadow-xl md:flex md:space-x-4">\n  <div class="flex-shrink-0">\n    <img class="h-12 w-12 rounded-full" src="..." alt="Profile">\n  </div>\n  <div>\n    <div class="text-xl font-medium text-white">Project X</div>\n    <p class="text-gray-400">Minimalistisch en responsief.</p>\n  </div>\n</div>',
+                    color: 'Groen',
+                    category: settings.columnTitles[1],
+                    createdAt: Date.now() + 1,
+                },
+            ];
+            localStorage.setItem(SNIPPETS_STORAGE_KEY, JSON.stringify(initialSnippets));
+            snippets = initialSnippets;
+        }
+        
+        // Sorteer op createdAt
+        snippets.sort((a, b) => b.createdAt - a.createdAt);
+
+        return { snippets, settings };
+
+    } catch (error) {
+        console.error("Fout bij het laden uit Local Storage:", error);
         return { 
             snippets: [], 
-            settings: { columnTitles: defaultColumnTitles, persistenceType: 'api' }
+            settings: { 
+                columnTitles: defaultColumnTitles, 
+                persistenceType: 'localStorage',
+                api_url: 'http://localhost:8080',
+                api_username: '',
+                api_token: null,
+            } 
         };
     }
 };
 
 const persistData = async (snippets, settings, persistenceType) => {
-    await delay(100); // Simuleer netwerkvertraging
-
+    // Deze functie wordt alleen gebruikt om Local Storage bij te werken, 
+    // aangezien API opslag direct in de CRUD-functies gebeurt.
+    
     if (persistenceType === 'localStorage') {
         localStorage.setItem(SNIPPETS_STORAGE_KEY, JSON.stringify(snippets));
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-    } else {
-        // MOCK API: Log de actie
-        console.log(`[API MOCK] Opslaan naar API: ${snippets.length} snippets.`);
+        
+        // Zorg dat het wachtwoord NIET wordt opgeslagen, alleen de auth velden
+        const settingsToStore = {
+            ...settings,
+            api_password: undefined, 
+            // We slaan de token ook in de settings op voor persistentie
+        };
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settingsToStore));
     }
 };
 
@@ -192,7 +334,8 @@ const SnippetItem = ({ snippet, onDelete, onCopy, onDragStart, onDragOver, onDro
         >
             <div className="flex items-center justify-between">
                 <div className="flex-grow min-w-0 pr-2">
-                    <h3 className="text-sm font-medium text-white truncate" title={snippet.title}>
+                    {/* Toon de ID in de titel in edit mode */}
+                     <h3 className="text-sm font-medium text-white truncate" title={`${snippet.title}${isEditMode ? ` (ID: ${snippet.id})` : ''}`}>
                         {snippet.title}
                     </h3>
                 </div>
@@ -239,13 +382,50 @@ const SnippetItem = ({ snippet, onDelete, onCopy, onDragStart, onDragOver, onDro
 };
 
 // --- Instellingen Weergave Component ---
-const SettingsView = ({ persistenceType, setPersistenceType, setView }) => {
-    const handleTypeChange = (e) => {
-        setPersistenceType(e.target.value);
+const SettingsView = ({ settings, setSettings, setView, apiLogin, isLoading }) => {
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [loginError, setLoginError] = useState(null);
+
+    const handleSettingsChange = (e) => {
+        const { name, value } = e.target;
+        setSettings(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setLoginError(null);
+        if (!currentPassword) {
+            setLoginError("Wachtwoord is vereist.");
+            return;
+        }
+
+        try {
+            // Dit is de call naar de ApiPersistence laag (apiLayer.login)
+            const result = await apiLogin(settings.api_username, currentPassword);
+            
+            // Sla de token op in de settings state
+            setSettings(prev => ({ 
+                ...prev, 
+                api_token: result.token, 
+                // Het wachtwoord hoeft niet in de state te blijven, alleen de token
+                api_password: undefined 
+            }));
+            
+            setCurrentPassword(''); // Wis wachtwoord na succesvolle login
+            setLoginError(null);
+            setView('board'); // Terug naar het bord
+            
+            // Forceer een herlaad van de data in de hoofdcomponent
+            window.dispatchEvent(new Event('storageChange')); 
+
+        } catch (error) {
+            console.error("Login fout:", error);
+            setLoginError(error.message || "Onbekende login fout.");
+        }
     };
 
     return (
-        <div className="max-w-2xl mx-auto p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+        <div className="max-w-4xl mx-auto p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
             <h2 className="text-2xl font-bold mb-6 text-white border-b border-gray-700 pb-2">Instellingen</h2>
 
             <div className="space-y-6">
@@ -253,29 +433,115 @@ const SettingsView = ({ persistenceType, setPersistenceType, setView }) => {
                 <div>
                     <label className="block text-lg font-medium text-indigo-400 mb-2">Gegevens Opslag Type</label>
                     <p className="text-gray-400 mb-4 text-sm">
-                        Kies hoe de applicatie gegevens opslaat. Let op: de API-modus is momenteel een mock en retourneert geen echte gegevens.
+                        Kies hoe de applicatie gegevens opslaat. API-modus vereist inloggegevens voor de externe Gateway.
                     </p>
                     <div className="flex space-x-4">
                         {PERSISTENCE_OPTIONS.map(type => (
                             <label key={type} className={`
                                 flex items-center p-3 rounded-lg cursor-pointer transition-all border
-                                ${persistenceType === type 
+                                ${settings.persistenceType === type 
                                     ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' 
                                     : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'}
                             `}>
                                 <input
                                     type="radio"
-                                    name="persistence"
+                                    name="persistenceType"
                                     value={type}
-                                    checked={persistenceType === type}
-                                    onChange={handleTypeChange}
+                                    checked={settings.persistenceType === type}
+                                    onChange={handleSettingsChange}
                                     className="mr-2 hidden"
                                 />
-                                <span className="font-semibold">{type === 'localStorage' ? 'Lokale Opslag (Testmodus)' : 'Externe API (Mock)'}</span>
+                                <span className="font-semibold">{type === 'localStorage' ? <><HardDrive className="w-5 h-5 mr-2" /> Lokale Opslag</> : <><LogIn className="w-5 h-5 mr-2" /> Externe API</>}</span>
                             </label>
                         ))}
                     </div>
                 </div>
+
+                {/* API INSTELLINGEN BLOK */}
+                {settings.persistenceType === 'api' && (
+                    <div className="p-5 bg-gray-700 rounded-lg border border-gray-600 space-y-4">
+                        <h3 className="text-xl font-semibold text-yellow-300">API Gateway Details</h3>
+                        
+                        {/* Status melding */}
+                        {settings.api_token ? (
+                             <div className="p-3 bg-green-900/50 border border-green-700 rounded-lg text-green-300 text-sm">
+                                Succesvol ingelogd! Token is actief.
+                            </div>
+                        ) : (
+                             <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-300 text-sm">
+                                <AlertTriangle className="inline w-4 h-4 mr-2" />
+                                Je moet inloggen om snippets op te halen of op te slaan.
+                            </div>
+                        )}
+
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            {/* API URL Veld */}
+                            <div>
+                                <label htmlFor="api_url" className="block text-sm font-medium text-gray-300 mb-1">API Basis URL (incl. poort)</label>
+                                <input
+                                    type="url"
+                                    id="api_url"
+                                    name="api_url"
+                                    value={settings.api_url}
+                                    onChange={handleSettingsChange}
+                                    placeholder="http://<server>:8080"
+                                    required
+                                    className="w-full p-2 bg-gray-900 border border-gray-600 rounded-lg text-white font-mono text-sm"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Moet linken naar de API Gateway, bijv. `http://&lt;server&gt;:8080`.
+                                </p>
+                            </div>
+
+                            {/* Gebruikersnaam Veld */}
+                            <div>
+                                <label htmlFor="api_username" className="block text-sm font-medium text-gray-300 mb-1">Gebruikersnaam</label>
+                                <input
+                                    type="text"
+                                    id="api_username"
+                                    name="api_username"
+                                    value={settings.api_username}
+                                    onChange={handleSettingsChange}
+                                    placeholder="API Gebruikersnaam"
+                                    required
+                                    className="w-full p-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm"
+                                />
+                            </div>
+
+                            {/* Wachtwoord Veld */}
+                            <div>
+                                <label htmlFor="api_password" className="block text-sm font-medium text-gray-300 mb-1">Wachtwoord (Wordt niet opgeslagen!)</label>
+                                <input
+                                    type="password"
+                                    id="api_password"
+                                    name="api_password"
+                                    value={currentPassword}
+                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                    placeholder="Wachtwoord"
+                                    required
+                                    className="w-full p-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm"
+                                />
+                                {loginError && <p className="text-sm text-red-400 mt-2">{loginError}</p>}
+                            </div>
+                            
+                            {/* Login Knop */}
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full py-2.5 px-3 bg-green-600 text-white font-semibold rounded-lg shadow-lg hover:bg-green-500 disabled:bg-gray-600 transition-colors text-sm flex items-center justify-center"
+                            >
+                                {isLoading ? 'Bezig met inloggen...' : <><LogIn className="w-5 h-5 mr-2" /> Inloggen & Data Laden</>}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setSettings(prev => ({ ...prev, api_token: null }))}
+                                className="w-full py-2 px-3 bg-red-600/50 text-red-300 font-semibold rounded-lg hover:bg-red-700/50 transition-colors text-sm"
+                            >
+                                Uitloggen (Token Verwijderen)
+                            </button>
+                        </form>
+                    </div>
+                )}
 
                 {/* Terug naar Board Knop */}
                 <div className="pt-4 border-t border-gray-700">
@@ -307,8 +573,13 @@ const reTimestampList = (list) => {
 const App = () => {
     const [view, setView] = useState('board'); // 'board' of 'settings'
     const [snippets, setSnippets] = useState([]);
-    const [columnTitles, setColumnTitles] = useState(defaultColumnTitles);
-    const [persistenceType, setPersistenceType] = useState('localStorage'); // Standaard Local Storage
+    const [settings, setSettings] = useState({ 
+        columnTitles: defaultColumnTitles, 
+        persistenceType: 'localStorage',
+        api_url: 'http://localhost:8080',
+        api_username: '',
+        api_token: null,
+    });
     
     const [searchTerm, setSearchTerm] = useState('');
     const [copyFeedback, setCopyFeedback] = useState({ message: '', visible: false });
@@ -325,45 +596,104 @@ const App = () => {
     const [dropTargetId, setDropTargetId] = useState(null); 
     const [isEditMode, setIsEditMode] = useState(false); 
 
+    // Instantie van de API Persistentie Laag
+    // De dependency array moet worden bijgewerkt om alle dependencies te bevatten die de ApiPersistence hook bepalen
+    const apiLayer = useApiPersistence(settings, { token: settings.api_token });
+
     // Initial Data Load (Gebruikt bij opstarten en bij wisselen van persistenceType)
-    useEffect(() => {
-        const loadData = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const { snippets: loadedSnippets, settings: loadedSettings } = await loadInitialData(persistenceType);
-                setSnippets(loadedSnippets);
-                setColumnTitles(loadedSettings.columnTitles);
-                setPersistenceType(loadedSettings.persistenceType); // Zet op basis van Local Storage of default
-            } catch (e) {
-                console.error("Fout bij het laden van data:", e);
-                setError(`Kon de data niet laden in de ${persistenceType} modus.`);
-            } finally {
-                setIsLoading(false);
+    const loadData = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const { snippets: loadedSnippets, settings: loadedSettings } = await loadLocalInitialData();
+            
+            // Overname van Local Storage settings
+            setSettings(loadedSettings);
+            
+            let finalSnippets = loadedSnippets;
+
+            if (loadedSettings.persistenceType === 'api' && loadedSettings.api_token) {
+                // Als API is gekozen EN we hebben een token, laad dan van de API
+                // Gebruik de ApiPersistence instance met de geladen token
+                // Omdat we in een callback zitten en geen hooks kunnen aanroepen, moeten we dit anders oplossen.
+                // In dit geval gebruiken we de apiLayer die als dependency wordt meegegeven.
+                // Echter, apiLayer is afhankelijk van de HUIDIGE settings, niet de GELADEN settings.
+                // Dit is een complexe edge case. Voor nu gaan we ervan uit dat als we laden, we de state updaten
+                // en de useEffect op [settings.persistenceType] zal triggeren voor de api fetch.
+                
+                // We laden alleen de lokale snippets eerst. De API fetch komt na de state update.
+                 finalSnippets = []; 
+            } else if (loadedSettings.persistenceType === 'api' && !loadedSettings.api_token) {
+                // API gekozen maar geen token, dus we zijn niet ingelogd
+                 setError("API modus actief maar niet ingelogd. Ga naar Instellingen.");
+                 finalSnippets = [];
             }
-        };
-        loadData();
-    }, [persistenceType]);
+            
+            setSnippets(finalSnippets);
 
-    // Data Persistentie (triggered na elke wijziging in snippets of columnTitles)
-    useEffect(() => {
-        // Zorg ervoor dat de data alleen wordt opgeslagen nadat deze is geladen
-        if (!isLoading) {
-            const saveCurrentData = async () => {
-                const settings = { columnTitles, persistenceType };
-                // Sorteer de snippets voor het opslaan om de correcte volgorde te garanderen
-                const sortedSnippets = [...snippets].sort((a, b) => b.createdAt - a.createdAt);
-                await persistData(sortedSnippets, settings, persistenceType);
-            };
-            saveCurrentData();
+        } catch (e) {
+            console.error("Fout bij het laden van data:", e);
+            if (e.message.startsWith('401:')) {
+                // Auth fout: wis de token en forceer naar settings
+                setSettings(prev => ({ ...prev, api_token: null }));
+                setView('settings');
+                setError(e.message);
+            } else {
+                 setError(`Kon de data niet laden in de ${settings.persistenceType} modus. (${e.message})`);
+            }
+            setSnippets([]); // Leeg de lijst bij fout
+        } finally {
+            setIsLoading(false);
         }
-    }, [snippets, columnTitles, persistenceType, isLoading]); 
+    }, [settings.persistenceType]); // Herlaad bij verandering van type
 
-    // Update column titles in Local Storage/API
+    // Effect voor API data loading
+    useEffect(() => {
+        const fetchApiData = async () => {
+             if (settings.persistenceType === 'api' && settings.api_token) {
+                setIsLoading(true);
+                try {
+                    const data = await apiLayer.loadData();
+                    setSnippets(data);
+                    setError(null);
+                } catch (e) {
+                     console.error("API Load Error", e);
+                     if (e.message.startsWith('401:')) {
+                        setSettings(prev => ({ ...prev, api_token: null }));
+                        setView('settings');
+                        setError(e.message);
+                    } else {
+                        setError(`Kon data niet ophalen: ${e.message}`);
+                    }
+                } finally {
+                    setIsLoading(false);
+                }
+             }
+        };
+        fetchApiData();
+    }, [settings.persistenceType, settings.api_token, apiLayer]); // Trigger als API modus actief is
+
+    useEffect(() => {
+        loadData();
+        // Luister naar een custom event om geforceerd te herladen na login
+        window.addEventListener('storageChange', loadData);
+        return () => window.removeEventListener('storageChange', loadData);
+    }, [loadData]);
+
+
+    // Data Persistentie van Local Storage/Settings (triggered na elke wijziging in settings)
+    useEffect(() => {
+        // Alleen Local Storage settings persisteren hier. Snippets alleen als localStorage type.
+        persistData(settings.persistenceType === 'localStorage' ? snippets : [], settings, settings.persistenceType);
+    }, [settings, snippets]); 
+
+
+    // Update column titles
     const handleUpdateColumnTitle = async (index, newTitle) => {
-        const newTitles = [...columnTitles];
+        const newTitles = [...settings.columnTitles];
         newTitles[index] = newTitle;
-        setColumnTitles(newTitles);
+        // Update de settings state
+        setSettings(prev => ({ ...prev, columnTitles: newTitles }));
     };
 
     // Handle form input changes
@@ -375,37 +705,30 @@ const App = () => {
     // Functie om klembord te plakken en titel te vullen
     const handlePaste = async () => {
         try {
-            // Probeer de Clipboard API te gebruiken
             const clipboardText = await navigator.clipboard.readText();
             if (clipboardText) {
-                // Gebruik de eerste 12 non-whitespace karakters voor de titel
                 const trimmedContent = clipboardText.trim();
                 let titleContent = trimmedContent.substring(0, 12);
                 
-                // Voeg '...' toe als de content langer is dan de preview
                 const newTitle = trimmedContent.length > 12 
                     ? titleContent.trim() + '...' 
                     : titleContent.trim();
 
-
                 setNewSnippet(prev => ({
                     ...prev,
                     code: clipboardText,
-                    title: newTitle
+                    title: newTitle || 'Plak Snippet' // Zorg voor een fallback titel
                 }));
 
-                // Visuele feedback
                 setCopyFeedback({ message: 'Inhoud uit klembord geplakt en titel gevuld!', visible: true });
             }
         } catch (err) {
-            console.error('Klembord lezen mislukt (NotAllowedError/PermissionsPolicy):', err);
-            // Vraag de gebruiker om de code handmatig in het veld te plakken, aangezien de browser de API blokkeert in deze omgeving.
+            console.error('Klembord lezen mislukt:', err);
             setCopyFeedback({ 
                 message: 'Klembordtoegang geblokkeerd. Plak de code handmatig in het codeveld (Ctrl/Cmd+V).', 
                 visible: true 
             });
-            // Vul de titel alsnog voor, zodat de gebruiker alleen hoeft te plakken.
-             const titlePlaceholder = 'Titel handmatig plakken...';
+            const titlePlaceholder = 'Titel handmatig plakken...';
              setNewSnippet(prev => ({
                  ...prev,
                  title: titlePlaceholder
@@ -419,26 +742,44 @@ const App = () => {
     const handleSaveSnippet = async (e) => {
         e.preventDefault();
         if (!newSnippet.title || !newSnippet.code) return;
+        if (settings.persistenceType === 'api' && !settings.api_token) {
+            setError("Niet ingelogd. Ga naar Instellingen om in te loggen op de API.");
+            return;
+        }
 
         try {
             setIsLoading(true);
-            const newSnippetObject = {
-                id: crypto.randomUUID(),
+            
+            const baseSnippet = {
                 title: newSnippet.title,
                 code: newSnippet.code,
                 color: newSnippet.color,
-                category: columnTitles[0], 
-                createdAt: Date.now() + 10000, // Zorgt ervoor dat nieuwe snippets bovenaan komen
+                category: settings.columnTitles[0], // Altijd in de eerste kolom
+                // De ID en createdAt worden door de persistentielaag ingesteld of geüpdatet
             };
             
+            let savedSnippet;
+
+            if (settings.persistenceType === 'api') {
+                // API opslag
+                savedSnippet = await apiLayer.saveSnippet(baseSnippet);
+            } else {
+                // Lokale opslag simulatie
+                savedSnippet = {
+                    ...baseSnippet,
+                    id: crypto.randomUUID(),
+                    createdAt: Date.now() + 10000, 
+                };
+            }
+
             // Voeg lokaal toe en sorteer
-            setSnippets(prev => [...prev, newSnippetObject].sort((a, b) => b.createdAt - a.createdAt));
+            setSnippets(prev => [...prev.filter(s => s.id !== savedSnippet.id), savedSnippet].sort((a, b) => b.createdAt - a.createdAt));
 
             // Clear the form
             setNewSnippet({ title: '', color: DEFAULT_COLOR, code: '' });
         } catch (e) {
             console.error("Fout bij het toevoegen van snippet:", e);
-            setError("Fout bij het opslaan van de snippet.");
+            setError(`Fout bij het opslaan van de snippet: ${e.message}`);
         } finally {
             setIsLoading(false);
         }
@@ -446,14 +787,86 @@ const App = () => {
 
     // Delete snippet
     const handleDeleteSnippet = async (id) => {
-        if (!isEditMode) return; // Vereist dat de bewerk modus aan staat
+        if (!isEditMode) return; 
+         if (settings.persistenceType === 'api' && !settings.api_token) {
+            setError("Niet ingelogd. Ga naar Instellingen om in te loggen op de API.");
+            return;
+        }
+        
         try {
+            if (settings.persistenceType === 'api') {
+                 await apiLayer.deleteSnippet(id);
+            }
+            
+            // Filter lokaal in beide modi
             setSnippets(prev => prev.filter(s => s.id !== id));
         } catch (e) {
             console.error("Fout bij het verwijderen van snippet:", e);
-            setError("Fout bij het verwijderen van de snippet.");
+            setError(`Fout bij het verwijderen van de snippet: ${e.message}`);
         }
     };
+
+    // Update snippet category for DND
+    const updateSnippetCategory = async (snippet, newCategory) => {
+        // Alleen bij verandering
+        if (snippet.category === newCategory) return;
+        
+        const updatedSnippet = { 
+            ...snippet, 
+            category: newCategory,
+            // Geef een hoge timestamp om bovenaan de nieuwe kolom te komen
+            createdAt: Date.now() + 10000 
+        };
+
+        try {
+            let savedSnippet = updatedSnippet;
+            if (settings.persistenceType === 'api') {
+                // PUT naar API om de categorie te updaten
+                savedSnippet = await apiLayer.saveSnippet(updatedSnippet);
+            } 
+            
+            // Update lokaal en sorteer
+            setSnippets(prev => 
+                [...prev.filter(s => s.id !== savedSnippet.id), savedSnippet]
+                .sort((a, b) => b.createdAt - a.createdAt)
+            );
+
+        } catch (e) {
+             console.error("Fout bij het updaten van de categorie:", e);
+             setError(`Kon categorie niet updaten: ${e.message}`);
+        }
+    };
+
+    // Update snippet order (binnen een kolom)
+    const updateSnippetOrder = async (reorderedColumn) => {
+        try {
+            // Dit is enkel visueel in LocalStorage modus
+            if (settings.persistenceType === 'api') {
+                 // Sla de gewijzigde snippets één voor één op om de 'updated_at' timestamp te veranderen
+                 // Dit is een simpele manier om de volgorde te persisteren, omdat de API Gateway op created_at/updated_at sorteert
+                 setIsLoading(true);
+                 for (const snippet of reorderedColumn) {
+                      // We hoeven niet alle velden te sturen, maar de saveSnippet functie verwacht een volledig object
+                      // Omdat dit een PUT is, zal de API alleen de gestuurde velden overschrijven/gebruiken
+                      await apiLayer.saveSnippet(snippet);
+                 }
+                 // Na de updates, herlaad de data om de nieuwe volgorde te reflecteren
+                 // Aangezien we in een lus zitten, is het beter om de API data pas aan het einde op te halen
+                 // We kunnen hier de loadData van de hook gebruiken
+                 const newData = await apiLayer.loadData();
+                 setSnippets(newData);
+                 return;
+            }
+            // In LocalStorage modus hoeft alleen de lokale state aangepast te worden.
+
+        } catch (e) {
+            console.error("Fout bij het herschikken van snippets:", e);
+            setError(`Kon snippets niet herschikken: ${e.message}`);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
 
     // DND Handlers
     const handleDragStart = (e, snippetId) => {
@@ -461,23 +874,19 @@ const App = () => {
         setDraggedId(snippetId);
     };
 
-    // Handler voor slepen OVER een ander item (binnen een kolom)
     const handleDragOverItem = (e, targetId) => {
         e.preventDefault();
         e.stopPropagation(); 
-        
         const draggedItem = e.dataTransfer.getData("snippetId");
         if (draggedItem && draggedItem !== targetId) {
             setDropTargetId(targetId);
         }
     };
     
-    // Handler voor slepen VERLAAT een item
     const handleDragLeaveItem = () => {
         setDropTargetId(null);
     };
 
-    // Handler voor drop op een snippet (herschikken binnen de kolom)
     const handleDropOnItem = (e, targetId) => {
         e.preventDefault();
         e.stopPropagation();
@@ -491,7 +900,7 @@ const App = () => {
             const draggedSnippet = prevSnippets.find(s => s.id === draggedId);
             if (!draggedSnippet) return prevSnippets;
             
-            // 1. Haal items in de categorie op en sorteer op de huidige volgorde
+            // 1. Haal items in de categorie op en sorteer op de huidige volgorde (createdAt)
             let columnItems = prevSnippets.filter(s => s.category === draggedSnippet.category).sort((a, b) => b.createdAt - a.createdAt);
             
             // 2. Verwijder en voeg lokaal in op de nieuwe plek
@@ -504,21 +913,22 @@ const App = () => {
             // 3. Geef de gewijzigde kolom een nieuwe set sequentiële timestamps
             const reorderedColumn = reTimestampList(columnItems);
 
-            // 4. Voeg terug in de totale lijst
+            // 4. Update API/Local Storage (asynchroon)
+            // Zorg ervoor dat de 'createdAt' van de gesleepte snippet de hoogste is (nieuwste),
+            // en de rest afloopt. Dit wordt gedaan door reTimestampList.
+            updateSnippetOrder(reorderedColumn);
+
+            // 5. Voeg terug in de totale lijst en retourneer de lokaal gesorteerde lijst
             const otherSnippets = prevSnippets.filter(s => s.category !== draggedSnippet.category);
-            
-            // 5. Retourneer de samengevoegde en finaal gesorteerde lijst (garandeert re-render)
             return [...otherSnippets, ...reorderedColumn].sort((a, b) => b.createdAt - a.createdAt);
         });
     };
 
-    // Handler voor slepen OVER de kolom (niet over een item)
     const handleDragOverColumn = (e) => {
         e.preventDefault();
-        setDropTargetId(null); // Reset drop target als we over de kolom slepen
+        setDropTargetId(null); 
     };
 
-    // Handler voor drop op de kolom (verplaatsen naar een andere kolom of naar de top van de huidige)
     const handleDropOnColumn = (e, targetColumnTitle) => {
         e.preventDefault();
         const draggedId = e.dataTransfer.getData("snippetId");
@@ -527,38 +937,30 @@ const App = () => {
 
         if (!draggedId) return;
 
-        setSnippets(prevSnippets => {
-            const draggedSnippet = prevSnippets.find(s => s.id === draggedId);
-            if (!draggedSnippet) return prevSnippets;
-            
-            // Items in de doelcategorie
-            let columnItems = prevSnippets.filter(s => s.category === targetColumnTitle).sort((a, b) => b.createdAt - a.createdAt);
-            
-            // 1. Als de categorie verandert:
-            if (draggedSnippet.category !== targetColumnTitle) {
-                // Update categorie en geef hoogste timestamp voor top-positionering
-                const updatedSnippet = { ...draggedSnippet, category: targetColumnTitle, createdAt: Date.now() + 10000 };
+        const draggedSnippet = snippets.find(s => s.id === draggedId);
+        if (!draggedSnippet) return;
+
+        // Als de kolom verandert, update de categorie en trigger API/Local opslag
+        if (draggedSnippet.category !== targetColumnTitle) {
+            updateSnippetCategory(draggedSnippet, targetColumnTitle);
+        } else {
+             // Drop in lege ruimte (Herschikken naar top van huidige kolom)
+             setSnippets(prevSnippets => {
+                let columnItems = prevSnippets.filter(s => s.category === targetColumnTitle).sort((a, b) => b.createdAt - a.createdAt);
                 
-                const otherSnippets = prevSnippets.filter(s => s.id !== draggedId);
+                const dragIndex = columnItems.findIndex(s => s.id === draggedId);
+                const [removed] = columnItems.splice(dragIndex, 1);
+                columnItems.unshift(removed);
+
+                const reorderedColumn = reTimestampList(columnItems);
                 
-                return [...otherSnippets, updatedSnippet].sort((a, b) => b.createdAt - a.createdAt);
-            }
+                // Update API/Local Storage (asynchroon)
+                updateSnippetOrder(reorderedColumn);
 
-            // 2. Drop in lege ruimte (Herschikken naar top van huidige kolom)
-            
-            // Verwijder en plaats bovenaan (index 0)
-            const dragIndex = columnItems.findIndex(s => s.id === draggedId);
-            const [removed] = columnItems.splice(dragIndex, 1);
-            columnItems.unshift(removed);
-
-            // Geef de gewijzigde kolom een nieuwe set sequentiële timestamps
-            const reorderedColumn = reTimestampList(columnItems);
-
-            // Voeg terug in de totale lijst
-            const otherSnippets = prevSnippets.filter(s => s.category !== targetColumnTitle);
-            
-            return [...otherSnippets, ...reorderedColumn].sort((a, b) => b.createdAt - a.createdAt);
-        });
+                const otherSnippets = prevSnippets.filter(s => s.category !== targetColumnTitle);
+                return [...otherSnippets, ...reorderedColumn].sort((a, b) => b.createdAt - a.createdAt);
+             });
+        }
     };
 
     // Copy snippet code and show feedback
@@ -597,6 +999,12 @@ const App = () => {
              {/* 1. Nieuwe Snippet Formulier (Bovenaan) */}
             <div className="mb-8 max-w-4xl mx-auto"> 
                 <h2 className="text-2xl font-bold mb-4 text-indigo-400">Nieuwe Snippet Toevoegen</h2>
+                {settings.persistenceType === 'api' && !settings.api_token && (
+                    <div className="flex items-center p-4 mb-4 bg-red-900/50 border border-red-700 rounded-lg text-red-300">
+                        <AlertTriangle className="w-5 h-5 mr-3" />
+                        <p className="font-medium">Niet ingelogd in API modus. Ga naar <button onClick={() => setView('settings')} className="text-red-300 underline font-bold">Instellingen</button> om in te loggen.</p>
+                    </div>
+                )}
                 <form onSubmit={handleSaveSnippet} className="p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
                     
                     {/* Titel en Kleurkiezer */}
@@ -645,7 +1053,7 @@ const App = () => {
                             </button>
                             <button
                                 type="submit"
-                                disabled={isLoading || !newSnippet.title || !newSnippet.code}
+                                disabled={isLoading || !newSnippet.title || !newSnippet.code || (settings.persistenceType === 'api' && !settings.api_token)}
                                 className="w-full py-2.5 px-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-700 disabled:bg-indigo-900 disabled:text-gray-500 transition-all duration-200 flex items-center justify-center text-sm"
                             >
                                 <Plus className="w-5 h-5 mr-1" />
@@ -689,7 +1097,7 @@ const App = () => {
             
             {/* KOLOMMEN CONTAINER: gap-3 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {columnTitles.map((title, index) => {
+                {settings.columnTitles.map((title, index) => {
                     const columnSnippets = getSnippetsForColumn(title);
 
                     return (
@@ -734,7 +1142,7 @@ const App = () => {
                                             onDragLeave={handleDragLeaveItem}
                                             isDragging={draggedId === snippet.id}
                                             isDropTarget={dropTargetId === snippet.id}
-                                            isEditMode={isEditMode} // NIEUW: geef de edit modus status door
+                                            isEditMode={isEditMode} 
                                         />
                                     ))
                                 )}
@@ -753,12 +1161,12 @@ const App = () => {
                 <div>
                     <h1 className="text-3xl font-extrabold text-white tracking-tight">Code Snippet Manager</h1>
                     <p className="text-sm text-gray-400 mt-1">
-                        Opslagmodus: <span className="font-mono text-xs bg-gray-800 p-1 rounded-md text-indigo-400">{persistenceType}</span>
+                        Opslagmodus: <span className="font-mono text-xs bg-gray-800 p-1 rounded-md text-indigo-400">{settings.persistenceType}</span>
                     </p>
                 </div>
                 {/* Knoppen Groep */}
                 <div className="flex space-x-3">
-                    {/* NIEUW: Bewerken Modus Toggle */}
+                    {/* Bewerken Modus Toggle */}
                     <button
                         onClick={() => setIsEditMode(prev => !prev)}
                         className={`p-3 rounded-lg transition-colors shadow-lg ${isEditMode 
@@ -790,7 +1198,16 @@ const App = () => {
             )}
 
             {/* Weergave logica */}
-            {view === 'board' ? renderSnippetBoard() : <SettingsView persistenceType={persistenceType} setPersistenceType={setPersistenceType} setView={setView} />}
+            {view === 'board' ? 
+                renderSnippetBoard() : 
+                <SettingsView 
+                    settings={settings} 
+                    setSettings={setSettings} 
+                    setView={setView} 
+                    apiLogin={apiLayer.login}
+                    isLoading={isLoading} 
+                />
+            }
 
             {/* Copy Feedback Toast */}
             {copyFeedback.visible && (
