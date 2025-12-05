@@ -1,7 +1,0 @@
-/* src/index.css */
-/* Dit bestand is het startpunt voor Tailwind CSS. */
-/* De Tailwind-stijlen worden hier geïnjecteerd door het build-proces. */
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
