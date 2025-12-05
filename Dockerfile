@@ -1,33 +1,18 @@
-# -------------------------------------------------------------------
-# STAGE 1: Build de React Applicatie
-# Gebruik Node.js om de React app te bouwen.
-# -------------------------------------------------------------------
-FROM node:20-alpine as builder
-
-WORKDIR /app
-
-# Kopieer package.json en installeer afhankelijkheden
-COPY package.json .
-RUN npm install
-
-# Kopieer de rest van de bestanden en voer de productie-build uit
-COPY . .
-RUN npm run build
-
-# -------------------------------------------------------------------
-# STAGE 2: Serve de Applicatie met Nginx (Enkel Proces)
-# Gebruik een lichte Nginx image om de statische bestanden te serveren.
-# -------------------------------------------------------------------
+# Gebruik de officiële Nginx image als basis
 FROM nginx:stable-alpine
 
-# Kopieer de basis Nginx configuratie 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Verwijder de standaard Nginx configuratie
+RUN rm /etc/nginx/conf.d/default.conf
 
-# Kopieer de gebouwde React app van de 'builder' stage naar de Nginx webroot.
-COPY --from=builder /app/build /usr/share/nginx/html
+# Kopieer onze Nginx configuratie
+COPY nginx.conf /etc/nginx/conf.d/
 
-# Expose poort 80 (standaard HTTP)
+# Kopieer de HTML (Frontend) bestanden naar de Nginx webroot
+# Alleen de index.html is nodig
+COPY index.html /usr/share/nginx/html/
+
+# Nginx draait standaard op poort 80
 EXPOSE 80
 
-# Nginx wordt gestart met dit commando, het is het enige proces in de container
+# De container blijft draaien met Nginx
 CMD ["nginx", "-g", "daemon off;"]
