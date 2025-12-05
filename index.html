@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CodeVault - Snippet Manager</title>
+    <title>CodeVault - Cloud Edition</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -32,58 +32,30 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* Definieer CSS variabele voor het code-thema */
-        :root {
-            --bg-code: #111827; /* Default (gray-900) */
-        }
-
-        /* Deze class passen we toe op alle code-gerelateerde elementen */
-        .theme-code-bg {
-            background-color: var(--bg-code) !important;
-            transition: background-color 0.3s ease;
-        }
-
-        /* Override highlight.js default background */
-        pre code.hljs {
-            background-color: var(--bg-code) !important;
-            transition: background-color 0.3s ease;
-        }
-
+        :root { --bg-code: #111827; }
+        .theme-code-bg { background-color: var(--bg-code) !important; transition: background-color 0.3s ease; }
+        pre code.hljs { background-color: var(--bg-code) !important; transition: background-color 0.3s ease; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #111827; }
         ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
-
         .fade-in { animation: fadeIn 0.3s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
         #toast {
             visibility: hidden; min-width: 250px; background-color: #10B981; color: #fff;
-            text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 50;
+            text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 100;
             left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 17px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s;
         }
         #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
-
+        #toast.error { background-color: #EF4444; }
         .filter-item.active { background-color: #374151; color: white; border-right: 3px solid #6366f1; }
         .tag-pill:hover { transform: translateY(-1px); }
-        
         .secure-blur { filter: blur(4px); user-select: none; opacity: 0.5; pointer-events: none; }
-
-        /* Dropdown menu animatie */
         .dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 100%;
-            margin-top: 0.5rem;
-            background-color: #1f2937;
-            min-width: 160px;
-            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
-            z-index: 100;
-            border-radius: 0.5rem;
-            border: 1px solid #374151;
-            overflow: hidden;
+            display: none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem;
+            background-color: #1f2937; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+            z-index: 100; border-radius: 0.5rem; border: 1px solid #374151; overflow: hidden;
         }
         .dropdown-content.show { display: block; animation: fadeIn 0.2s ease-out; }
     </style>
@@ -96,30 +68,32 @@
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-code text-indigo-500 text-2xl"></i>
                 <h1 class="text-xl font-bold text-white tracking-wide">Code<span class="text-indigo-500">Vault</span></h1>
-                <span id="app-version" class="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full ml-2">v2.7.0</span>
-            </div>
-            <div class="flex items-center gap-3 text-sm text-gray-400">
-                <span class="text-indigo-400 hidden lg:inline mr-2"><i class="fa-solid fa-tags"></i> Smart Library</span>
+                <span id="app-version" class="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full ml-2">v3.0.0 Cloud</span>
                 
-                <!-- NIEUW: Theme Selector -->
+                <!-- Status Indicator -->
+                <div id="connection-status" class="ml-4 flex items-center gap-2 px-2 py-1 rounded bg-gray-800 border border-gray-700 text-gray-400 text-xs font-mono hidden sm:flex">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> Verbinden...
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 text-sm text-gray-400">
+                <!-- API Connection Button -->
+                <button onclick="openConfigModal()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors hover:bg-gray-800 border border-transparent hover:border-gray-700 text-indigo-400" title="Verbindingsinstellingen">
+                    <i class="fa-solid fa-server"></i>
+                    <span class="font-medium text-xs hidden sm:inline">Server</span>
+                </button>
+
+                <!-- Theme Selector -->
                 <div class="relative">
                     <button onclick="toggleThemeDropdown()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors hover:bg-gray-800 border border-transparent hover:border-gray-700" title="Wijzig Code Achtergrond">
                         <i class="fa-solid fa-palette text-indigo-400"></i>
                         <span class="font-medium text-xs hidden sm:inline">Thema</span>
                     </button>
                     <div id="theme-dropdown" class="dropdown-content">
-                        <button onclick="setTheme('#111827')" class="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full bg-[#111827] border border-gray-500"></span> Standaard
-                        </button>
-                        <button onclick="setTheme('#0f172a')" class="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full bg-[#0f172a] border border-gray-500"></span> Midnight
-                        </button>
-                        <button onclick="setTheme('#000000')" class="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full bg-black border border-gray-500"></span> Deep Black
-                        </button>
-                        <button onclick="setTheme('#1f1a1a')" class="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full bg-[#1f1a1a] border border-gray-500"></span> Mocha
-                        </button>
+                        <button onclick="setTheme('#111827')" class="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#111827] border border-gray-500"></span> Standaard</button>
+                        <button onclick="setTheme('#0f172a')" class="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#0f172a] border border-gray-500"></span> Midnight</button>
+                        <button onclick="setTheme('#000000')" class="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-black border border-gray-500"></span> Deep Black</button>
+                        <button onclick="setTheme('#1f1a1a')" class="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#1f1a1a] border border-gray-500"></span> Mocha</button>
                     </div>
                 </div>
 
@@ -148,15 +122,11 @@
                 </h2>
                 
                 <form id="snippet-form" class="space-y-4 flex-grow flex flex-col">
-                    <!-- Verborgen veld voor ID -->
                     <input type="hidden" id="snippet-id">
-
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Titel</label>
-                        <input type="text" id="title" placeholder="Bijv. Authenticatie Module" 
-                            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm" required>
+                        <input type="text" id="title" placeholder="Bijv. Authenticatie Module" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm" required>
                     </div>
-
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Hoofdtaal</label>
                         <select id="main-language" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
@@ -170,38 +140,24 @@
                             <option value="text">Platte tekst</option>
                         </select>
                     </div>
-
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Labels (Tags)</label>
-                        <input type="text" id="tags" placeholder="Bijv. ui, auth (gescheiden door komma)" 
-                            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm">
-                        
+                        <input type="text" id="tags" placeholder="Bijv. ui, auth (gescheiden door komma)" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm">
                         <div id="existing-tags-list" class="flex flex-wrap gap-2 pt-2"></div>
                     </div>
-
-                    <!-- Secure Checkbox -->
                     <div class="flex items-center gap-2">
                          <input type="checkbox" id="is-secured" class="w-4 h-4 text-indigo-600 rounded bg-gray-800 border-gray-700 focus:ring-indigo-500">
                          <label for="is-secured" class="text-xs text-gray-400 select-none cursor-pointer"><i class="fa-solid fa-lock mr-1 text-yellow-500"></i> Beveilig deze snippet</label>
                     </div>
-
-                    <!-- Container voor dynamische code blokken -->
-                    <div id="input-blocks-container" class="space-y-4 flex-grow overflow-y-auto pr-1">
-                        <!-- Wordt gevuld door JS -->
-                    </div>
-
-                    <!-- Add Block Button -->
+                    <div id="input-blocks-container" class="space-y-4 flex-grow overflow-y-auto pr-1"></div>
                     <button type="button" onclick="addInputBlock()" class="w-full py-2 border-2 border-dashed border-gray-700 text-gray-500 rounded-lg hover:border-indigo-500 hover:text-indigo-400 transition-colors text-xs font-bold uppercase tracking-wide">
                         <i class="fa-solid fa-plus mr-1"></i> Codeblok Toevoegen
                     </button>
-
                     <div class="flex gap-2 mt-4">
-                        <button type="submit" id="submit-btn"
-                            class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg">
+                        <button type="submit" id="submit-btn" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg">
                             <i class="fa-solid fa-save"></i> Opslaan
                         </button>
-                        <button type="button" id="cancel-edit-btn" onclick="cancelEdit()"
-                            class="hidden px-4 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 rounded-lg transition-colors">
+                        <button type="button" id="cancel-edit-btn" onclick="cancelEdit()" class="hidden px-4 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 rounded-lg transition-colors">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>
@@ -215,7 +171,6 @@
                 <div class="p-4 border-b border-gray-800 bg-gray-850 rounded-t-xl">
                     <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Bibliotheek</h2>
                 </div>
-                
                 <div class="overflow-y-auto flex-grow p-3 space-y-6">
                     <div class="space-y-1">
                         <button onclick="setFilter('all')" id="filter-all" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors active">
@@ -231,16 +186,8 @@
                             <span id="count-secured" class="text-xs bg-gray-800 px-2 py-0.5 rounded-full text-gray-500">0</span>
                         </button>
                     </div>
-
-                    <div>
-                        <h3 class="text-xs font-bold text-gray-600 uppercase mb-2 px-2">Talen</h3>
-                        <div id="language-list" class="space-y-1"></div>
-                    </div>
-
-                    <div>
-                        <h3 class="text-xs font-bold text-gray-600 uppercase mb-2 px-2">Labels</h3>
-                        <div id="tag-cloud" class="flex flex-wrap gap-2 px-1"></div>
-                    </div>
+                    <div><h3 class="text-xs font-bold text-gray-600 uppercase mb-2 px-2">Talen</h3><div id="language-list" class="space-y-1"></div></div>
+                    <div><h3 class="text-xs font-bold text-gray-600 uppercase mb-2 px-2">Labels</h3><div id="tag-cloud" class="flex flex-wrap gap-2 px-1"></div></div>
                 </div>
             </div>
         </div>
@@ -250,23 +197,17 @@
             <div class="bg-gray-900 p-2 rounded-xl border border-gray-800 flex items-center gap-3 mb-4 shadow-sm">
                 <div class="flex-grow relative">
                     <i class="fa-solid fa-search text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2 text-sm"></i>
-                    <input type="text" id="search-bar" placeholder="Zoek op naam, code of tag..." 
-                        class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <input type="text" id="search-bar" placeholder="Zoek op naam, code of tag..." class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
                 </div>
-                <div class="text-xs text-gray-400 px-3 border-l border-gray-700 font-medium" id="current-view-label">
-                    Alles
-                </div>
+                <div class="text-xs text-gray-400 px-3 border-l border-gray-700 font-medium" id="current-view-label">Alles</div>
             </div>
-
             <div id="snippets-wrapper" class="flex-grow overflow-y-auto pr-2 space-y-4">
                  <div id="empty-state" class="hidden text-center py-12 bg-gray-900 rounded-xl border border-gray-800 border-dashed">
                     <i class="fa-solid fa-filter text-3xl text-gray-600 mb-3"></i>
                     <h3 class="text-sm font-medium text-white">Geen snippets gevonden</h3>
-                    <p class="text-xs text-gray-500 mt-1">Pas je filter aan of voeg iets nieuws toe.</p>
+                    <p class="text-xs text-gray-500 mt-1">Pas je filter aan of verbind met de database.</p>
                 </div>
-                <div id="snippets-container" class="space-y-4 pb-10">
-                    <!-- Snippets worden hier geladen -->
-                </div>
+                <div id="snippets-container" class="space-y-4 pb-10"></div>
             </div>
         </div>
     </main>
@@ -275,35 +216,80 @@
 
     <!-- Tag Manager Modal -->
     <div id="tag-manager-modal" class="fixed inset-0 bg-gray-950/80 backdrop-blur-sm hidden items-center justify-center z-50">
-        <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md shadow-2xl">
-            <div class="p-6">
-                <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-800 pb-2">Beheer Labels</h3>
-                <div id="tag-manager-list" class="space-y-3 max-h-80 overflow-y-auto pr-2"></div>
-                <button onclick="closeTagManager()" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors">Sluiten</button>
+        <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md shadow-2xl p-6">
+            <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-800 pb-2">Beheer Labels</h3>
+            <div id="tag-manager-list" class="space-y-3 max-h-80 overflow-y-auto pr-2"></div>
+            <button onclick="closeTagManager()" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors">Sluiten</button>
+        </div>
+    </div>
+
+    <!-- Config Modal (NIEUW) -->
+    <div id="config-modal" class="fixed inset-0 bg-gray-950/90 backdrop-blur-sm hidden items-center justify-center z-[60]">
+        <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md shadow-2xl p-6">
+            <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
+                <span><i class="fa-solid fa-server mr-2 text-indigo-400"></i>Verbinding</span>
+                <span id="modal-status-indicator" class="text-xs text-red-500 font-normal">Niet verbonden</span>
+            </h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">API Base URL</label>
+                    <input type="text" id="api-url" placeholder="http://localhost:5000" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Endpoint Naam</label>
+                    <div class="flex">
+                        <span class="inline-flex items-center px-3 text-sm text-gray-400 bg-gray-800 border border-r-0 border-gray-700 rounded-l-md">/api/</span>
+                        <input type="text" id="api-endpoint" placeholder="codevault" value="codevault" class="w-full bg-gray-800 border border-gray-700 rounded-r-lg px-3 py-2 text-white text-sm focus:border-indigo-500 focus:outline-none">
+                    </div>
+                    <p class="text-[10px] text-gray-500 mt-1">Standaard: codevault. Zorg dat dit endpoint bestaat of mag worden aangemaakt.</p>
+                </div>
+
+                <div class="border-t border-gray-800 pt-3 mt-2">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Login & Token</label>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <input type="text" id="api-user" placeholder="Gebruikersnaam" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm">
+                        <input type="password" id="api-pass" placeholder="Wachtwoord" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm">
+                    </div>
+                    <button onclick="performApiLogin()" class="w-full bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium py-2 rounded-lg transition-colors mb-3">
+                        <i class="fa-solid fa-key mr-1"></i> Log in & Haal Token
+                    </button>
+                    
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Bearer Token (Handmatig)</label>
+                    <textarea id="api-token" rows="3" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-xs font-mono placeholder-gray-600 resize-none" placeholder="Plak hier je Bearer token..."></textarea>
+                </div>
+            </div>
+
+            <div class="flex gap-2 mt-6">
+                <button onclick="saveApiConfig()" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors">
+                    Verbinden & Opslaan
+                </button>
+                <button onclick="closeConfigModal()" class="px-4 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 rounded-lg transition-colors">
+                    Sluiten
+                </button>
             </div>
         </div>
     </div>
 
     <script type="module">
-        // --- CONSTANTS & STATE ---
-        const STORAGE_KEY = 'codevault_snippets_v2';
-        const TAG_CONFIG_KEY = 'codevault_tag_config';
-        const PIN_KEY = 'codevault_user_pin';
-        const THEME_KEY = 'codevault_theme_color';
-        
-        let snippets = [];
+        // --- CONFIGURATIE & STATE ---
+        const LOCAL_STORAGE_TAG_KEY = 'codevault_tag_config';
+        const LOCAL_STORAGE_PIN_KEY = 'codevault_user_pin';
+        const LOCAL_STORAGE_THEME_KEY = 'codevault_theme_color';
+        const LOCAL_STORAGE_API_KEY = 'codevault_api_config'; // { url, endpoint, token }
+
+        let apiConfig = { url: 'http://localhost:5000', endpoint: 'codevault', token: '' };
+        let snippets = []; // Wordt nu gevuld via API
         let tagConfig = {}; 
         let currentFilter = { type: 'all', value: null };
         let inputBlockCount = 0;
         let editingSnippetId = null;
         let isGlobalLocked = true;
+        let isConnected = false;
         
         const COLOR_CLASSES = ['indigo', 'green', 'yellow', 'red', 'blue', 'pink', 'purple', 'teal'];
         const DEFAULT_COLORS = COLOR_CLASSES.map(c => ({
-            text: `text-${c}-400`, 
-            bg: `bg-${c}-900/20`, 
-            border: `border-${c}-900/50`,
-            hover: `hover:bg-${c}-900/50`
+            text: `text-${c}-400`, bg: `bg-${c}-900/20`, border: `border-${c}-900/50`, hover: `hover:bg-${c}-900/50`
         }));
 
         // --- DOM ELEMENTS ---
@@ -321,8 +307,11 @@
         const tagManagerModal = document.getElementById('tag-manager-modal');
         const tagManagerListEl = document.getElementById('tag-manager-list');
         const globalLockBtn = document.getElementById('global-lock-btn');
+        const configModal = document.getElementById('config-modal');
+        const statusIndicator = document.getElementById('connection-status');
+        const modalStatusIndicator = document.getElementById('modal-status-indicator');
         
-        // Form elements
+        // Form
         const formTitle = document.getElementById('form-title');
         const submitBtn = document.getElementById('submit-btn');
         const cancelEditBtn = document.getElementById('cancel-edit-btn');
@@ -332,95 +321,287 @@
         const isSecuredInput = document.getElementById('is-secured');
 
         // --- INIT ---
-        function init() {
-            if(!localStorage.getItem(PIN_KEY)) {
-                localStorage.setItem(PIN_KEY, '0000');
-            }
-
-            // Load Theme
-            const savedTheme = localStorage.getItem(THEME_KEY);
+        async function init() {
+            if(!localStorage.getItem(LOCAL_STORAGE_PIN_KEY)) localStorage.setItem(LOCAL_STORAGE_PIN_KEY, '0000');
+            const savedTheme = localStorage.getItem(LOCAL_STORAGE_THEME_KEY);
             if(savedTheme) setTheme(savedTheme);
 
-            loadData();
             loadTagConfig();
+            loadApiConfig(); // Laad API settings uit LS
             addInputBlock(); 
-            renderDashboard();
-            renderSnippets();
+
+            await refreshData(); // Probeer data op te halen
+
             renderClickableTags();
             updateGlobalLockUI();
         }
 
-        // --- THEME LOGIC ---
+        // --- API CONFIG & AUTH ---
+        function loadApiConfig() {
+            const raw = localStorage.getItem(LOCAL_STORAGE_API_KEY);
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    apiConfig = { ...apiConfig, ...parsed };
+                } catch(e) { console.error("Config parse error", e); }
+            }
+            // Vul velden in modal
+            document.getElementById('api-url').value = apiConfig.url;
+            document.getElementById('api-endpoint').value = apiConfig.endpoint;
+            document.getElementById('api-token').value = apiConfig.token;
+        }
+
+        window.saveApiConfig = async function() {
+            const url = document.getElementById('api-url').value.replace(/\/$/, ""); // Strip trailing slash
+            const endpoint = document.getElementById('api-endpoint').value;
+            const token = document.getElementById('api-token').value;
+
+            if(!url || !endpoint) {
+                showToast("URL en Endpoint zijn verplicht", true);
+                return;
+            }
+
+            apiConfig = { url, endpoint, token };
+            localStorage.setItem(LOCAL_STORAGE_API_KEY, JSON.stringify(apiConfig));
+            
+            showToast("Instellingen opgeslagen");
+            closeConfigModal();
+            await refreshData();
+        }
+
+        window.performApiLogin = async function() {
+            const url = document.getElementById('api-url').value.replace(/\/$/, "");
+            const user = document.getElementById('api-user').value;
+            const pass = document.getElementById('api-pass').value;
+
+            if(!url || !user || !pass) {
+                alert("Vul URL, Gebruikersnaam en Wachtwoord in.");
+                return;
+            }
+
+            try {
+                const res = await fetch(`${url}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.token) {
+                    document.getElementById('api-token').value = data.token;
+                    showToast("Login succesvol! Token opgehaald.");
+                } else {
+                    alert("Login mislukt: " + (data.error || "Onbekende fout"));
+                }
+            } catch (e) {
+                alert("Verbindingsfout: " + e.message);
+            }
+        }
+
+        // --- API DATA OPERATIONS ---
+        async function refreshData() {
+            updateStatusUI(false, "Verbinden...");
+            try {
+                if (!apiConfig.token) throw new Error("Geen token ingesteld");
+                
+                const res = await fetch(`${apiConfig.url}/api/${apiConfig.endpoint}`, {
+                    headers: { 'Authorization': `Bearer ${apiConfig.token}` }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    // Map API structuur {id: "...", data: {...}} naar interne structuur {id: "...", ...}
+                    snippets = data.map(item => ({
+                        id: item.id, // MongoDB string ID
+                        ...item.data
+                    }));
+                    
+                    isConnected = true;
+                    updateStatusUI(true, "Verbonden");
+                    renderDashboard();
+                    renderSnippets();
+                } else if(res.status === 404) {
+                     // Endpoint bestaat misschien nog niet, is ok.
+                    snippets = [];
+                    isConnected = true; // Wel verbonden met gateway, maar endpoint is leeg/nieuw
+                    updateStatusUI(true, "Endpoint Leeg/Nieuw");
+                    renderDashboard();
+                    renderSnippets();
+                } else {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+            } catch (e) {
+                console.error("Fetch error", e);
+                isConnected = false;
+                snippets = []; // Of behoud oude data? Liever leegmaken om verwarring te voorkomen
+                updateStatusUI(false, "Offline / Auth Fout");
+                renderDashboard();
+                renderSnippets();
+            }
+        }
+
+        async function createSnippetAPI(newSnippet) {
+            try {
+                const res = await fetch(`${apiConfig.url}/api/${apiConfig.endpoint}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiConfig.token}`
+                    },
+                    body: JSON.stringify(newSnippet)
+                });
+                if(!res.ok) throw new Error("Save failed");
+                await refreshData();
+                return true;
+            } catch(e) { 
+                showToast("Fout bij opslaan: " + e.message, true);
+                return false;
+            }
+        }
+
+        async function updateSnippetAPI(id, updatedData) {
+            try {
+                const res = await fetch(`${apiConfig.url}/api/${apiConfig.endpoint}/${id}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiConfig.token}`
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+                if(!res.ok) throw new Error("Update failed");
+                await refreshData();
+                return true;
+            } catch(e) {
+                showToast("Fout bij updaten: " + e.message, true);
+                return false;
+            }
+        }
+
+        async function deleteSnippetAPI(id) {
+             try {
+                const res = await fetch(`${apiConfig.url}/api/${apiConfig.endpoint}/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${apiConfig.token}` }
+                });
+                if(!res.ok) throw new Error("Delete failed");
+                await refreshData();
+                return true;
+            } catch(e) {
+                showToast("Fout bij verwijderen: " + e.message, true);
+                return false;
+            }
+        }
+
+
+        // --- UI HELPERS ---
+        function updateStatusUI(connected, text) {
+            if (connected) {
+                statusIndicator.className = "ml-4 flex items-center gap-2 px-2 py-1 rounded bg-green-900/30 border border-green-700 text-green-400 text-xs font-mono hidden sm:flex";
+                statusIndicator.innerHTML = `<i class="fa-solid fa-link"></i> ${text}`;
+                modalStatusIndicator.className = "text-xs text-green-500 font-bold";
+                modalStatusIndicator.innerText = "Verbonden";
+            } else {
+                statusIndicator.className = "ml-4 flex items-center gap-2 px-2 py-1 rounded bg-red-900/30 border border-red-700 text-red-400 text-xs font-mono hidden sm:flex";
+                statusIndicator.innerHTML = `<i class="fa-solid fa-link-slash"></i> ${text}`;
+                modalStatusIndicator.className = "text-xs text-red-500 font-bold";
+                modalStatusIndicator.innerText = text;
+            }
+        }
+
+        window.openConfigModal = function() {
+            configModal.classList.remove('hidden');
+            configModal.classList.add('flex');
+        }
+        window.closeConfigModal = function() {
+            configModal.classList.add('hidden');
+            configModal.classList.remove('flex');
+        }
+
+        function showToast(msg, isError=false) {
+            const toast = document.getElementById("toast");
+            toast.innerText = msg;
+            toast.className = isError ? "error show" : "show";
+            setTimeout(() => { toast.className = ""; }, 3000);
+        }
+
+        // --- EXISTING LOGIC (Adapted) ---
+
+        // Theme
         window.toggleThemeDropdown = function() {
             const el = document.getElementById('theme-dropdown');
             el.classList.toggle('show');
-            
-            // Sluit dropdown als er buiten geklikt wordt (simpele implementatie)
-            if (el.classList.contains('show')) {
-                document.addEventListener('click', closeDropdownHandler);
-            }
+            if (el.classList.contains('show')) document.addEventListener('click', closeDropdownHandler);
         }
-
         function closeDropdownHandler(e) {
-            const dropdown = document.getElementById('theme-dropdown');
-            // Controleer of de klik NIET op de knop of in de dropdown was
             if (!e.target.closest('#theme-dropdown') && !e.target.closest('button[onclick="toggleThemeDropdown()"]')) {
-                dropdown.classList.remove('show');
+                document.getElementById('theme-dropdown').classList.remove('show');
                 document.removeEventListener('click', closeDropdownHandler);
             }
         }
-
         window.setTheme = function(color) {
             document.documentElement.style.setProperty('--bg-code', color);
-            localStorage.setItem(THEME_KEY, color);
-            // Verberg dropdown na keuze
+            localStorage.setItem(LOCAL_STORAGE_THEME_KEY, color);
             document.getElementById('theme-dropdown').classList.remove('show');
             document.removeEventListener('click', closeDropdownHandler);
         }
 
-        // --- SECURITY LOGIC ---
+        // Tag Config
+        function loadTagConfig() {
+            try {
+                const stored = localStorage.getItem(LOCAL_STORAGE_TAG_KEY);
+                tagConfig = stored ? JSON.parse(stored) : {};
+            } catch (e) { tagConfig = {}; }
+        }
+        function saveTagConfig() {
+            localStorage.setItem(LOCAL_STORAGE_TAG_KEY, JSON.stringify(tagConfig));
+        }
+        function getTagColor(tagName) {
+            const cleanTag = tagName.trim().toLowerCase();
+            if (tagConfig[cleanTag]) return tagConfig[cleanTag];
+            const allTags = Object.keys(tagConfig);
+            const usedColorKeys = allTags.map(tag => tagConfig[tag].text);
+            let newColorObject = null;
+            for (const color of DEFAULT_COLORS) {
+                if (!usedColorKeys.includes(color.text)) { newColorObject = color; break; }
+            }
+            if (!newColorObject) newColorObject = DEFAULT_COLORS[allTags.length % DEFAULT_COLORS.length];
+            tagConfig[cleanTag] = newColorObject;
+            saveTagConfig();
+            return newColorObject;
+        }
+        function getUniqueTags() {
+            const tagSet = new Set();
+            snippets.forEach(s => { if(s.tags) s.tags.forEach(t => tagSet.add(t.trim().toLowerCase())); });
+            return Array.from(tagSet).filter(t => t.length > 0).sort();
+        }
+
+        // Security
         window.toggleGlobalLock = function() {
             if (isGlobalLocked) {
                 const userPin = prompt("Voer pincode in om te ontgrendelen:");
-                const savedPin = localStorage.getItem(PIN_KEY);
-                
-                if (userPin === savedPin) {
+                if (userPin === localStorage.getItem(LOCAL_STORAGE_PIN_KEY)) {
                     isGlobalLocked = false;
                     updateGlobalLockUI();
                     renderSnippets();
-                } else if (userPin !== null) {
-                    alert("Onjuiste pincode.");
-                }
+                } else if (userPin !== null) alert("Onjuiste pincode.");
             } else {
                 const action = prompt("Type 'lock' om te sluiten of 'pin' om pincode te wijzigen:", "lock");
-                
-                if (action && action.toLowerCase() === 'pin') {
-                    changePin();
-                } else {
-                    isGlobalLocked = true;
-                    updateGlobalLockUI();
-                    renderSnippets();
-                }
+                if (action && action.toLowerCase() === 'pin') changePin();
+                else { isGlobalLocked = true; updateGlobalLockUI(); renderSnippets(); }
             }
         }
-
         window.changePin = function() {
-            const currentPin = localStorage.getItem(PIN_KEY);
-            const inputOld = prompt("Voer huidige pincode in:");
-            
-            if (inputOld === currentPin) {
-                const newPin = prompt("Voer nieuwe pincode in (minimaal 4 cijfers):");
+            const currentPin = localStorage.getItem(LOCAL_STORAGE_PIN_KEY);
+            if (prompt("Voer huidige pincode in:") === currentPin) {
+                const newPin = prompt("Nieuwe pincode (min 4 cijfers):");
                 if (newPin && newPin.length >= 4) {
-                    localStorage.setItem(PIN_KEY, newPin);
+                    localStorage.setItem(LOCAL_STORAGE_PIN_KEY, newPin);
                     alert("Pincode gewijzigd!");
-                } else {
-                    alert("Ongeldige pincode.");
-                }
-            } else {
-                alert("Huidige pincode onjuist.");
-            }
+                } else alert("Ongeldige pincode.");
+            } else alert("Huidige pincode onjuist.");
         }
-
         function updateGlobalLockUI() {
             if (isGlobalLocked) {
                 globalLockBtn.className = "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors bg-red-900/30 text-red-400 hover:bg-red-900/50 border border-red-900/50";
@@ -433,350 +614,174 @@
             }
         }
 
-        // --- DATA MANAGEMENT ---
-        function loadData() {
-            try {
-                const rawData = localStorage.getItem(STORAGE_KEY);
-                let parsed = rawData ? JSON.parse(rawData) : [];
-                
-                if (Array.isArray(parsed)) {
-                    snippets = parsed.map(s => {
-                        let blocks = s.blocks || [];
-                        let snippetLanguage = s.language; 
-
-                        if (!snippetLanguage && blocks.length > 0) {
-                            snippetLanguage = blocks[0].language || 'text';
-                        }
-                        
-                        blocks = blocks.map(b => ({
-                            id: b.id || ('blk_' + Date.now() + Math.random()),
-                            description: b.description || b.language || 'Codeblok', 
-                            code: b.code || ''
-                        }));
-
-                        return {
-                            ...s,
-                            language: snippetLanguage || 'text',
-                            tags: Array.isArray(s.tags) ? s.tags : [],
-                            isFavorite: !!s.isFavorite,
-                            isSecured: !!s.isSecured,
-                            blocks: blocks 
-                        };
-                    });
-                } else {
-                    snippets = [];
-                }
-            } catch(e) { 
-                console.error("Data error", e); 
-                snippets = []; 
-            }
-        }
-
-        function saveData() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(snippets));
-            renderDashboard(); 
-            renderClickableTags();
-        }
-
-        function loadTagConfig() {
-            try {
-                const stored = localStorage.getItem(TAG_CONFIG_KEY);
-                tagConfig = stored ? JSON.parse(stored) : {};
-            } catch (e) { tagConfig = {}; }
-        }
-        function saveTagConfig() {
-            localStorage.setItem(TAG_CONFIG_KEY, JSON.stringify(tagConfig));
-        }
-
-        // --- INPUT BLOCKS LOGIC ---
+        // Input Blocks
         window.addInputBlock = function(defaultDesc = '', defaultCode = '') {
             inputBlockCount++;
             const blockId = `input-block-${inputBlockCount}`;
-            
             const div = document.createElement('div');
             div.className = "theme-code-bg border border-gray-800 rounded-lg p-3 relative group fade-in";
             div.id = blockId;
-            
-            const deleteBtn = `
-                <button type="button" onclick="removeInputBlock('${blockId}')" class="absolute top-2 right-2 text-gray-600 hover:text-red-400 p-1" title="Verwijder blok">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            `;
-
             div.innerHTML = `
-                ${deleteBtn}
-                <div class="mb-2 pr-6">
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Omschrijving</label>
-                    <input type="text" class="block-desc w-full bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 placeholder-gray-600" 
-                        placeholder="Bijv. index.html of Main Functie">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Code</label>
-                    <textarea class="block-code w-full bg-gray-800 border border-gray-700 rounded-md px-2 py-2 text-white font-mono text-xs placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y min-h-[250px] theme-code-bg" placeholder="// Code hier..."></textarea>
-                </div>
+                <button type="button" onclick="removeInputBlock('${blockId}')" class="absolute top-2 right-2 text-gray-600 hover:text-red-400 p-1" title="Verwijder blok"><i class="fa-solid fa-xmark"></i></button>
+                <div class="mb-2 pr-6"><label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Omschrijving</label><input type="text" class="block-desc w-full bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 placeholder-gray-600" placeholder="Bijv. index.html of Main Functie"></div>
+                <div><label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Code</label><textarea class="block-code w-full bg-gray-800 border border-gray-700 rounded-md px-2 py-2 text-white font-mono text-xs placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y min-h-[250px] theme-code-bg" placeholder="// Code hier..."></textarea></div>
             `;
-            
             inputBlocksContainer.appendChild(div);
-            
             div.querySelector('.block-desc').value = defaultDesc;
             div.querySelector('.block-code').value = defaultCode;
         }
-
         window.removeInputBlock = function(id) {
-            if(inputBlocksContainer.children.length > 1) {
-                const el = document.getElementById(id);
-                el.remove();
-            } else {
-                const el = document.getElementById(id);
-                el.querySelector('.block-code').value = '';
-                el.querySelector('.block-desc').value = '';
-            }
+            if(inputBlocksContainer.children.length > 1) document.getElementById(id).remove();
+            else { const el = document.getElementById(id); el.querySelector('.block-code').value = ''; el.querySelector('.block-desc').value = ''; }
         }
 
-        // --- TAG & COLOR LOGIC ---
-        function getTagColor(tagName) {
-            const cleanTag = tagName.trim().toLowerCase();
-            if (tagConfig[cleanTag]) return tagConfig[cleanTag];
-            
-            const allTags = Object.keys(tagConfig);
-            const usedColorKeys = allTags.map(tag => tagConfig[tag].text);
-            let newColorObject = null;
-            
-            for (const color of DEFAULT_COLORS) {
-                if (!usedColorKeys.includes(color.text)) {
-                    newColorObject = color;
-                    break;
-                }
-            }
-            if (!newColorObject) {
-                const index = allTags.length % DEFAULT_COLORS.length;
-                newColorObject = DEFAULT_COLORS[index];
-            }
-            tagConfig[cleanTag] = newColorObject;
-            saveTagConfig();
-            return newColorObject;
-        }
-
-        function getUniqueTags() {
-            const tagSet = new Set();
-            snippets.forEach(s => {
-                if(s.tags) s.tags.forEach(t => tagSet.add(t.trim().toLowerCase()));
-            });
-            return Array.from(tagSet).filter(t => t.length > 0).sort();
-        }
-
-        // --- RENDER DASHBOARD ---
+        // --- RENDER FUNCTIONS ---
         function renderDashboard() {
             countAllEl.innerText = snippets.length;
             countFavEl.innerText = snippets.filter(s => s.isFavorite).length;
             countSecEl.innerText = snippets.filter(s => s.isSecured).length;
 
             const langCounts = {};
-            snippets.forEach(s => {
-                const lang = s.language || 'text';
-                langCounts[lang] = (langCounts[lang] || 0) + 1;
-            });
-
+            snippets.forEach(s => { const lang = s.language || 'text'; langCounts[lang] = (langCounts[lang] || 0) + 1; });
             languageListEl.innerHTML = '';
             Object.keys(langCounts).sort().forEach(lang => {
                 const btn = document.createElement('button');
-                const isActive = currentFilter.type === 'language' && currentFilter.value === lang;
-                btn.className = `filter-item w-full flex justify-between items-center px-3 py-1.5 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors ${isActive ? 'active' : ''}`;
+                btn.className = `filter-item w-full flex justify-between items-center px-3 py-1.5 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors ${currentFilter.type === 'language' && currentFilter.value === lang ? 'active' : ''}`;
                 btn.onclick = () => setFilter('language', lang);
-                btn.innerHTML = `
-                    <span class="capitalize flex items-center gap-3"><i class="fa-solid fa-code w-4 text-gray-600"></i> ${lang}</span>
-                    <span class="text-xs text-gray-600">${langCounts[lang]}</span>
-                `;
+                btn.innerHTML = `<span class="capitalize flex items-center gap-3"><i class="fa-solid fa-code w-4 text-gray-600"></i> ${lang}</span><span class="text-xs text-gray-600">${langCounts[lang]}</span>`;
                 languageListEl.appendChild(btn);
             });
 
             const tagCounts = {};
-            getUniqueTags().forEach(tag => {
-                tagCounts[tag] = snippets.filter(s => s.tags && s.tags.includes(tag)).length;
-            });
-            
+            getUniqueTags().forEach(tag => { tagCounts[tag] = snippets.filter(s => s.tags && s.tags.includes(tag)).length; });
             tagCloudEl.innerHTML = '';
             Object.keys(tagCounts).forEach(tag => {
-                const isActive = currentFilter.type === 'tag' && currentFilter.value === tag;
                 const color = getTagColor(tag);
-                
                 const span = document.createElement('button');
-                span.className = `tag-pill text-[11px] px-2 py-1 rounded-md border transition-all ${color.bg} ${color.border} ${color.text} ${isActive ? 'bg-opacity-70 border-opacity-70 text-white' : 'hover:brightness-125'}`;
+                span.className = `tag-pill text-[11px] px-2 py-1 rounded-md border transition-all ${color.bg} ${color.border} ${color.text} ${currentFilter.type === 'tag' && currentFilter.value === tag ? 'bg-opacity-70 border-opacity-70 text-white' : 'hover:brightness-125'}`;
                 span.onclick = () => setFilter('tag', tag);
                 span.innerHTML = `#${tag} <span class="opacity-50 ml-1 text-gray-400">${tagCounts[tag]}</span>`;
                 tagCloudEl.appendChild(span);
             });
-
+            
             document.getElementById('filter-all').classList.toggle('active', currentFilter.type === 'all');
             document.getElementById('filter-favorites').classList.toggle('active', currentFilter.type === 'favorites');
             document.getElementById('filter-secured').classList.toggle('active', currentFilter.type === 'secured');
         }
 
-        // --- RENDER SNIPPETS ---
         function renderSnippets() {
             container.innerHTML = '';
             const search = document.getElementById('search-bar').value.toLowerCase();
-
+            
             const filtered = snippets.filter(s => {
-                if (!s || !s.blocks) return false;
-
-                let matchesFilter = true;
-                if (currentFilter.type === 'favorites') matchesFilter = s.isFavorite;
-                if (currentFilter.type === 'secured') matchesFilter = s.isSecured; 
-                if (currentFilter.type === 'language') {
-                    matchesFilter = s.language === currentFilter.value;
-                }
-                if (currentFilter.type === 'tag') matchesFilter = s.tags && s.tags.includes(currentFilter.value);
-
-                const titleMatch = (s.title || '').toLowerCase().includes(search);
-                const tagMatch = s.tags && s.tags.some(t => t.includes(search));
-                const codeMatch = s.blocks.some(b => b.code && b.code.toLowerCase().includes(search));
-
-                return matchesFilter && (titleMatch || codeMatch || tagMatch);
+                if(!s.blocks) return false;
+                let matches = true;
+                if(currentFilter.type === 'favorites') matches = s.isFavorite;
+                if(currentFilter.type === 'secured') matches = s.isSecured;
+                if(currentFilter.type === 'language') matches = s.language === currentFilter.value;
+                if(currentFilter.type === 'tag') matches = s.tags && s.tags.includes(currentFilter.value);
+                
+                const txtMatch = (s.title||'').toLowerCase().includes(search) || 
+                               (s.tags && s.tags.some(t => t.includes(search))) ||
+                               s.blocks.some(b => b.code && b.code.toLowerCase().includes(search));
+                return matches && txtMatch;
             });
-
-            filtered.sort((a, b) => {
-                if (a.isFavorite === b.isFavorite) return b.id - a.id;
-                return a.isFavorite ? -1 : 1;
-            });
-
-            if (filtered.length === 0) {
-                emptyState.classList.remove('hidden');
-                return;
-            }
+            
+            filtered.sort((a,b) => (b.isFavorite === a.isFavorite) ? 0 : (a.isFavorite ? -1 : 1)); // Favs bovenaan, daarna database volgorde (created_at)
+            
+            if(filtered.length === 0) { emptyState.classList.remove('hidden'); return; }
             emptyState.classList.add('hidden');
 
             filtered.forEach(snippet => {
-                try {
-                    const isContentHidden = isGlobalLocked && snippet.isSecured;
+                const isContentHidden = isGlobalLocked && snippet.isSecured;
+                const el = document.createElement('div');
+                el.className = 'bg-gray-850 border border-gray-800 rounded-lg overflow-hidden hover:border-gray-600 transition-colors group fade-in mb-6 shadow-sm';
+                
+                let tagsHtml = (snippet.tags||[]).map(t => {
+                    const c = getTagColor(t);
+                    return `<span class="text-[10px] px-1.5 py-0.5 rounded cursor-pointer ${c.bg} ${c.border} ${c.text} hover:bg-indigo-900/50" onclick="setFilter('tag', '${t}')">#${t}</span>`;
+                }).join('');
+                if(tagsHtml) tagsHtml = `<div class="flex gap-2 mt-1">${tagsHtml}</div>`;
 
-                    const el = document.createElement('div');
-                    el.className = 'bg-gray-850 border border-gray-800 rounded-lg overflow-hidden hover:border-gray-600 transition-colors group fade-in mb-6 shadow-sm';
-                    
-                    let tagsHtml = '';
-                    if(snippet.tags && snippet.tags.length > 0) {
-                        tagsHtml = `<div class="flex gap-2 mt-1">` + 
-                            snippet.tags.map(t => {
-                                const color = getTagColor(t);
-                                return `<span class="text-[10px] px-1.5 py-0.5 rounded cursor-pointer ${color.bg} ${color.border} ${color.text} hover:bg-indigo-900/50" onclick="setFilter('tag', '${t}')">#${t}</span>`
-                            }).join('') + 
-                            `</div>`;
-                    }
-
-                    let blocksHtml = '';
-                    
-                    if (isContentHidden) {
-                         blocksHtml = `
-                            <div class="p-8 text-center border-t border-gray-800">
-                                <i class="fa-solid fa-lock text-3xl text-gray-700 mb-3"></i>
-                                <p class="text-sm text-gray-500 font-medium italic">Inhoud beveiligd</p>
-                                <p class="text-xs text-gray-600 mt-1">Ontgrendel de kluis om te bekijken</p>
-                            </div>
-                        `;
-                    } else {
-                        if (snippet.blocks && snippet.blocks.length > 0) {
-                            blocksHtml = snippet.blocks.map((block, idx) => {
-                                const safeCode = (block.code || '').replace(/'/g, "\\'").replace(/\n/g, "\\n");
-                                const displayCode = escapeHtml(block.code || '');
-                                return `
-                                    <div class="border-t border-gray-800 first:border-t-0">
-                                        <div class="flex justify-between items-center bg-gray-900/50 px-3 py-1.5">
-                                            <span class="text-[10px] font-bold text-gray-400 font-mono tracking-wide">${escapeHtml(block.description || 'Blok ' + (idx+1))}</span>
-                                            <button onclick="copySnippet('${safeCode}')" class="text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-1" title="Kopieer dit blok">
-                                                <i class="fa-regular fa-copy"></i> <span class="hidden sm:inline">Kopieer</span>
-                                            </button>
-                                        </div>
-                                        <div class="relative text-xs group/code">
-                                            <!-- NIEUW: theme-code-bg class toegevoegd -->
-                                            <pre class="m-0"><code class="language-${snippet.language || 'text'} p-3 block overflow-x-auto max-h-[300px] scrollbar-thin theme-code-bg">${displayCode}</code></pre>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('');
-                        }
-                    }
-
-                    const editAction = isContentHidden ? "alert('Ontgrendel eerst de kluis om te bewerken')" : `editSnippet(${snippet.id})`;
-                    const editTitle = isContentHidden ? "Beveiligd" : "Klik om te bewerken";
-                    const editCursor = isContentHidden ? "cursor-not-allowed" : "cursor-pointer hover:text-indigo-400";
-                    
-                    const lockIconClass = snippet.isSecured ? 'fa-lock text-orange-500' : 'fa-lock-open text-gray-600 hover:text-orange-500';
-                    const lockTitle = snippet.isSecured ? 'Beveiligd (Klik om te openen)' : 'Onbeveiligd (Klik om te beveiligen)';
-
-                    el.innerHTML = `
-                        <div class="p-3 bg-gray-900 border-b border-gray-800 flex justify-between items-start">
-                            <div class="overflow-hidden flex-grow mr-2 min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-[10px] uppercase font-bold text-indigo-400 border border-indigo-900/50 bg-indigo-900/20 px-1.5 rounded flex-shrink-0">${snippet.language}</span>
-                                    <h3 class="font-bold text-gray-200 text-sm truncate min-w-0 ${editCursor} transition-colors" title="${editTitle}" onclick="${editAction}">${escapeHtml(snippet.title || 'Naamloos')}</h3>
-                                </div>
-                                ${tagsHtml}
-                            </div>
-                            <div class="flex gap-1 flex-shrink-0 ml-2">
-                                <button onclick="toggleSnippetLock(${snippet.id})" class="p-1.5 rounded hover:bg-gray-800 transition-colors" title="${lockTitle}">
-                                    <i class="fa-solid ${lockIconClass}"></i>
-                                </button>
-                                <button onclick="toggleFavorite(${snippet.id})" class="p-1.5 rounded hover:bg-gray-800 transition-colors ${snippet.isFavorite ? 'text-yellow-500' : 'text-gray-600 hover:text-yellow-500'}" title="Favoriet">
-                                    <i class="fa-${snippet.isFavorite ? 'solid' : 'regular'} fa-star"></i>
-                                </button>
-                                <button onclick="deleteSnippet(${snippet.id})" class="p-1.5 text-gray-600 hover:text-red-400 rounded hover:bg-gray-800 transition-colors" title="Verwijder">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <!-- NIEUW: theme-code-bg class toegevoegd aan wrapper -->
-                        <div class="theme-code-bg">
-                            ${blocksHtml}
-                        </div>
-                    `;
-                    container.appendChild(el);
-                } catch(err) {
-                    console.error("Error rendering snippet:", snippet, err);
+                let blocksHtml = '';
+                if(isContentHidden) {
+                    blocksHtml = `<div class="p-8 text-center border-t border-gray-800"><i class="fa-solid fa-lock text-3xl text-gray-700 mb-3"></i><p class="text-sm text-gray-500 font-medium italic">Inhoud beveiligd</p><p class="text-xs text-gray-600 mt-1">Ontgrendel de kluis om te bekijken</p></div>`;
+                } else {
+                    blocksHtml = (snippet.blocks||[]).map((block, idx) => {
+                        const safeCode = (block.code||'').replace(/'/g, "\\'").replace(/\n/g, "\\n");
+                        return `<div class="border-t border-gray-800 first:border-t-0"><div class="flex justify-between items-center bg-gray-900/50 px-3 py-1.5"><span class="text-[10px] font-bold text-gray-400 font-mono tracking-wide">${escapeHtml(block.description||'Blok '+(idx+1))}</span><button onclick="copySnippet('${safeCode}')" class="text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-1"><i class="fa-regular fa-copy"></i> <span class="hidden sm:inline">Kopieer</span></button></div><div class="relative text-xs group/code"><pre class="m-0"><code class="language-${snippet.language||'text'} p-3 block overflow-x-auto max-h-[300px] scrollbar-thin theme-code-bg">${escapeHtml(block.code||'')}</code></pre></div></div>`;
+                    }).join('');
                 }
-            });
 
-            document.querySelectorAll('pre code').forEach((block) => {
-                block.classList.remove('hljs'); 
-                hljs.highlightElement(block);
+                const editAction = isContentHidden ? "alert('Ontgrendel eerst de kluis')" : `editSnippet('${snippet.id}')`; // ID is nu string, dus quotes nodig
+                const lockIcon = snippet.isSecured ? 'fa-lock text-orange-500' : 'fa-lock-open text-gray-600 hover:text-orange-500';
+
+                el.innerHTML = `
+                    <div class="p-3 bg-gray-900 border-b border-gray-800 flex justify-between items-start">
+                        <div class="overflow-hidden flex-grow mr-2 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] uppercase font-bold text-indigo-400 border border-indigo-900/50 bg-indigo-900/20 px-1.5 rounded flex-shrink-0">${snippet.language}</span>
+                                <h3 class="font-bold text-gray-200 text-sm truncate min-w-0 ${isContentHidden ? 'cursor-not-allowed' : 'cursor-pointer hover:text-indigo-400'} transition-colors" onclick="${editAction}">${escapeHtml(snippet.title||'Naamloos')}</h3>
+                            </div>
+                            ${tagsHtml}
+                        </div>
+                        <div class="flex gap-1 flex-shrink-0 ml-2">
+                            <button onclick="toggleSnippetLock('${snippet.id}')" class="p-1.5 rounded hover:bg-gray-800 transition-colors"><i class="fa-solid ${lockIcon}"></i></button>
+                            <button onclick="toggleFavorite('${snippet.id}')" class="p-1.5 rounded hover:bg-gray-800 transition-colors ${snippet.isFavorite?'text-yellow-500':'text-gray-600 hover:text-yellow-500'}"><i class="fa-${snippet.isFavorite?'solid':'regular'} fa-star"></i></button>
+                            <button onclick="deleteSnippet('${snippet.id}')" class="p-1.5 text-gray-600 hover:text-red-400 rounded hover:bg-gray-800 transition-colors"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="theme-code-bg">${blocksHtml}</div>
+                `;
+                container.appendChild(el);
             });
+            document.querySelectorAll('pre code').forEach(block => { block.classList.remove('hljs'); hljs.highlightElement(block); });
         }
 
-        // --- TAGS EDITOR HELPERS ---
-        function renderClickableTags() {
-            existingTagsListEl.innerHTML = '';
-            getUniqueTags().forEach(tag => {
-                const color = getTagColor(tag);
-                const button = document.createElement('button');
-                button.className = `text-[11px] px-2 py-1 rounded-full border transition-all ${color.bg} ${color.border} ${color.text} hover:scale-[1.05] flex-shrink-0`;
-                button.innerText = `#${tag}`;
-                button.title = "Klik om toe te voegen/verwijderen";
-                button.onclick = (e) => toggleTagInInput(e, tag);
-                existingTagsListEl.appendChild(button);
-            });
-        }
-
-        function toggleTagInInput(e, tag) {
+        // --- ACTIONS ---
+        document.getElementById('snippet-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const currentTags = tagsInput.value.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
-            const index = currentTags.indexOf(tag);
-            if (index > -1) currentTags.splice(index, 1);
-            else currentTags.push(tag);
-            tagsInput.value = currentTags.join(', ');
+            const title = document.getElementById('title').value.trim();
+            const mainLanguage = document.getElementById('main-language').value; 
+            const tagsInputVal = document.getElementById('tags').value;
+            const isSecured = document.getElementById('is-secured').checked;
             
-            const target = e.currentTarget;
-            target.style.transform = 'scale(0.9)';
-            setTimeout(() => target.style.transform = 'scale(1)', 100);
-        }
+            const blocks = [];
+            document.querySelectorAll('#input-blocks-container > div').forEach(el => {
+                const desc = el.querySelector('.block-desc').value; 
+                const code = el.querySelector('.block-code').value;
+                if(code.trim()) blocks.push({ description: desc, code: code });
+            });
 
-        // --- EDIT LOGIC ---
+            if(!title || blocks.length === 0) { alert("Vul titel en code in."); return; }
+            if(!isConnected) { alert("Geen verbinding met database."); openConfigModal(); return; }
+
+            const tags = tagsInputVal.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
+            tags.forEach(tag => getTagColor(tag));
+
+            const snippetData = {
+                title, language: mainLanguage, blocks, tags, isSecured,
+                isFavorite: editingSnippetId ? snippets.find(s => s.id === editingSnippetId).isFavorite : false
+            };
+
+            let success = false;
+            if (editingSnippetId) {
+                success = await updateSnippetAPI(editingSnippetId, snippetData);
+            } else {
+                success = await createSnippetAPI(snippetData);
+            }
+
+            if(success) {
+                resetForm();
+                if(!editingSnippetId) setFilter('all');
+            }
+        });
+
+        // Edit
         window.editSnippet = function(id) {
             const s = snippets.find(x => x.id === id);
             if(!s) return;
-            
-            if (isGlobalLocked && s.isSecured) {
-                alert("Deze snippet is beveiligd. Ontgrendel de kluis eerst.");
-                return;
-            }
+            if (isGlobalLocked && s.isSecured) { alert("Beveiligd. Ontgrendel de kluis."); return; }
 
             snippetIdInput.value = s.id;
             titleInput.value = s.title;
@@ -785,13 +790,7 @@
             isSecuredInput.checked = s.isSecured;
 
             inputBlocksContainer.innerHTML = '';
-            if(s.blocks && s.blocks.length > 0) {
-                s.blocks.forEach(b => {
-                    addInputBlock(b.description, b.code);
-                });
-            } else {
-                addInputBlock();
-            }
+            (s.blocks && s.blocks.length > 0 ? s.blocks : [{}]).forEach(b => addInputBlock(b.description, b.code));
 
             editingSnippetId = id;
             formTitle.innerHTML = '<i class="fa-solid fa-pen mr-2 text-yellow-500"></i>Snippet Bewerken';
@@ -799,21 +798,15 @@
             submitBtn.classList.replace('bg-indigo-600', 'bg-yellow-600');
             submitBtn.classList.replace('hover:bg-indigo-700', 'hover:bg-yellow-700');
             cancelEditBtn.classList.remove('hidden');
-
             document.querySelector('main').scrollTo({ top: 0, behavior: 'smooth' });
         }
-
-        window.cancelEdit = function() {
-            resetForm();
-        }
-
+        window.cancelEdit = function() { resetForm(); }
         function resetForm() {
             editingSnippetId = null;
             document.getElementById('snippet-form').reset();
             snippetIdInput.value = '';
             inputBlocksContainer.innerHTML = '';
             addInputBlock(); 
-
             formTitle.innerHTML = '<i class="fa-solid fa-pen-to-square mr-2 text-indigo-400"></i>Nieuwe Snippet';
             submitBtn.innerHTML = '<i class="fa-solid fa-save mr-2"></i> Opslaan';
             submitBtn.classList.replace('bg-yellow-600', 'bg-indigo-600');
@@ -821,162 +814,24 @@
             cancelEditBtn.classList.add('hidden');
         }
 
-        // --- TAG MANAGER MODAL ---
-        window.openTagManager = function() {
-            renderTagManagerList();
-            tagManagerModal.classList.remove('hidden');
-            tagManagerModal.classList.add('flex');
-        }
-        window.closeTagManager = function() {
-            tagManagerModal.classList.add('hidden');
-            tagManagerModal.classList.remove('flex');
-            renderDashboard(); 
-            renderClickableTags();
-            renderSnippets(); 
-        }
-        function renderTagManagerList() {
-            tagManagerListEl.innerHTML = '';
-            const uniqueTags = getUniqueTags();
-            if (uniqueTags.length === 0) {
-                tagManagerListEl.innerHTML = '<p class="text-gray-500 text-sm">Geen tags gevonden.</p>';
-                return;
-            }
-            uniqueTags.forEach(tag => {
-                const color = getTagColor(tag);
-                const item = document.createElement('div');
-                item.className = 'flex items-center justify-between p-2 rounded-lg border border-gray-800 bg-gray-850';
-                item.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs font-mono uppercase px-2 py-1 rounded-full border ${color.bg} ${color.border} ${color.text}">${tag}</span>
-                    </div>
-                    <button onclick="changeTagColor('${tag}')" class="text-gray-500 hover:text-yellow-500 p-1 rounded-full hover:bg-gray-700"><i class="fa-solid fa-palette"></i></button>
-                `;
-                tagManagerListEl.appendChild(item);
-            });
-        }
-        window.changeTagColor = function(tag) {
-            const availableColors = COLOR_CLASSES.join(', ');
-            const newColor = prompt(`Kies kleur voor '${tag}' (beschikbaar: ${availableColors}):`);
-            if (newColor && COLOR_CLASSES.includes(newColor.trim().toLowerCase())) {
-                const c = newColor.trim().toLowerCase();
-                tagConfig[tag] = { text: `text-${c}-400`, bg: `bg-${c}-900/20`, border: `border-${c}-900/50`, hover: `hover:bg-${c}-900/50` };
-                saveTagConfig();
-                renderTagManagerList();
-            } else if(newColor) {
-                alert(`Ongeldige kleur.`);
-            }
-        }
-
-        // --- ACTIONS ---
-        document.getElementById('snippet-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const title = document.getElementById('title').value.trim();
-            const mainLanguage = document.getElementById('main-language').value; 
-            const tagsInputVal = document.getElementById('tags').value;
-            const isSecured = document.getElementById('is-secured').checked;
-            
-            // Verzamel Blocks
-            const blockElements = document.querySelectorAll('#input-blocks-container > div');
-            const blocks = [];
-            
-            blockElements.forEach(el => {
-                const desc = el.querySelector('.block-desc').value; 
-                const code = el.querySelector('.block-code').value;
-                if(code.trim()) {
-                    blocks.push({
-                        description: desc,
-                        code: code
-                    });
-                }
-            });
-
-            if(!title || blocks.length === 0) {
-                alert("Vul een titel in en minstens één codeblok met inhoud.");
-                return;
-            }
-
-            const tags = tagsInputVal.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
-            tags.forEach(tag => getTagColor(tag));
-
-            if (editingSnippetId) {
-                const index = snippets.findIndex(s => s.id === editingSnippetId);
-                if (index > -1) {
-                    snippets[index] = {
-                        ...snippets[index], 
-                        title: title,
-                        language: mainLanguage,
-                        blocks: blocks,
-                        tags: tags,
-                        isSecured: isSecured
-                    };
-                }
-            } else {
-                const newSnippet = {
-                    id: Date.now(),
-                    title,
-                    language: mainLanguage,
-                    blocks,
-                    tags,
-                    isFavorite: false,
-                    isSecured: isSecured,
-                    createdAt: Date.now()
-                };
-                snippets.push(newSnippet);
-            }
-
-            saveData();
-            resetForm(); 
-            
-            if (editingSnippetId) {
-                renderSnippets();
-            } else {
-                setFilter('all');
-            }
-        });
-
-        window.toggleFavorite = function(id) {
-            const index = snippets.findIndex(s => s.id === id);
-            if(index !== -1) { snippets[index].isFavorite = !snippets[index].isFavorite; saveData(); renderSnippets(); }
-        }
-
-        window.toggleSnippetLock = function(id) {
-            const index = snippets.findIndex(s => s.id === id);
-            if(index !== -1) { 
-                snippets[index].isSecured = !snippets[index].isSecured; 
-                saveData(); 
-                renderSnippets(); 
-            }
-        }
-
-        window.deleteSnippet = function(id) {
+        // Toggle Actions
+        window.toggleFavorite = async function(id) {
             const s = snippets.find(x => x.id === id);
-            if (isGlobalLocked && s && s.isSecured) {
-                alert("Deze snippet is beveiligd en kan niet verwijderd worden zolang de kluis gesloten is.");
-                return;
-            }
-            if(confirm('Snippet verwijderen?')) { 
-                snippets = snippets.filter(s => s.id !== id); 
-                if(editingSnippetId === id) resetForm();
-                saveData(); 
-                renderSnippets(); 
+            if(s) await updateSnippetAPI(id, { isFavorite: !s.isFavorite });
+        }
+        window.toggleSnippetLock = async function(id) {
+            const s = snippets.find(x => x.id === id);
+            if(s) await updateSnippetAPI(id, { isSecured: !s.isSecured });
+        }
+        window.deleteSnippet = async function(id) {
+            const s = snippets.find(x => x.id === id);
+            if (isGlobalLocked && s && s.isSecured) { alert("Beveiligd. Kan niet verwijderen."); return; }
+            if(confirm('Snippet verwijderen?')) {
+                if(await deleteSnippetAPI(id)) { if(editingSnippetId === id) resetForm(); }
             }
         }
 
-        window.copySnippet = function(code) {
-            const textArea = document.createElement("textarea");
-            textArea.value = code;
-            textArea.style.position = "fixed"; textArea.style.left = "-9999px";
-            document.body.appendChild(textArea);
-            textArea.focus(); textArea.select();
-            try {
-                document.execCommand('copy');
-                const toast = document.getElementById("toast");
-                toast.className = "show";
-                setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
-            } catch (err) {}
-            document.body.removeChild(textArea);
-        }
-
+        // --- GENERAL HELPERS ---
         window.setFilter = function(type, value) {
             currentFilter = { type, value };
             if(type === 'all') viewLabel.innerText = 'Alles';
@@ -986,10 +841,50 @@
             else if(type === 'tag') viewLabel.innerText = `Tag: #${value}`;
             renderDashboard(); renderSnippets();
         }
-
+        window.copySnippet = function(code) {
+            const ta = document.createElement("textarea");
+            ta.value = code; ta.style.position = "fixed"; ta.style.left = "-9999px";
+            document.body.appendChild(ta); ta.focus(); ta.select();
+            try { document.execCommand('copy'); showToast("Gekopieerd!"); } catch (err) {}
+            document.body.removeChild(ta);
+        }
         function escapeHtml(text) {
             if (!text) return text;
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+        
+        // Tag management helpers (renderClickableTags etc) similar to before...
+        function renderClickableTags() {
+            existingTagsListEl.innerHTML = '';
+            getUniqueTags().forEach(tag => {
+                const color = getTagColor(tag);
+                const btn = document.createElement('button');
+                btn.className = `text-[11px] px-2 py-1 rounded-full border transition-all ${color.bg} ${color.border} ${color.text} hover:scale-[1.05] flex-shrink-0`;
+                btn.innerText = `#${tag}`;
+                btn.onclick = (e) => { e.preventDefault(); toggleTagInInput(tag, e.currentTarget); };
+                existingTagsListEl.appendChild(btn);
+            });
+        }
+        function toggleTagInInput(tag, btn) {
+            const currentTags = tagsInput.value.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
+            const idx = currentTags.indexOf(tag);
+            if (idx > -1) currentTags.splice(idx, 1); else currentTags.push(tag);
+            tagsInput.value = currentTags.join(', ');
+            btn.style.transform = 'scale(0.9)'; setTimeout(() => btn.style.transform = 'scale(1)', 100);
+        }
+        
+        // Tag Manager modal functions...
+        window.openTagManager = function() { renderTagManagerList(); tagManagerModal.classList.remove('hidden'); tagManagerModal.classList.add('flex'); }
+        window.closeTagManager = function() { tagManagerModal.classList.add('hidden'); tagManagerModal.classList.remove('flex'); renderDashboard(); renderClickableTags(); renderSnippets(); }
+        function renderTagManagerList() {
+            tagManagerListEl.innerHTML = '';
+            getUniqueTags().forEach(tag => {
+                const color = getTagColor(tag);
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-2 rounded-lg border border-gray-800 bg-gray-850';
+                item.innerHTML = `<div class="flex items-center gap-3"><span class="text-xs font-mono uppercase px-2 py-1 rounded-full border ${color.bg} ${color.border} ${color.text}">${tag}</span></div><button onclick="changeTagColor('${tag}')" class="text-gray-500 hover:text-yellow-500 p-1 rounded-full hover:bg-gray-700"><i class="fa-solid fa-palette"></i></button>`;
+                tagManagerListEl.appendChild(item);
+            });
         }
 
         window.onload = init;
