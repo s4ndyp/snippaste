@@ -196,7 +196,11 @@ const loadLocalInitialData = async () => {
         const settings = {
             columnTitles: storedSettings.columnTitles || defaultColumnTitles,
             persistenceType: storedSettings.persistenceType || 'localStorage',
-            api_url: storedSettings.api_url || 'http://localhost:8080', // Standaard API URL
+            // *** HIER IS DE WIJZIGING ***
+            // Wanneer we de app als single-container zonder Nginx proxy draaien, 
+            // moet de standaard URL DIRECT naar de externe API wijzen.
+            // Dit is een voorbeeld. Vervang dit met de daadwerkelijke URL van je backend!
+            api_url: storedSettings.api_url || 'https://api.mijndomein.nl', 
             api_username: storedSettings.api_username || '',
             api_token: storedSettings.api_token || null, // JWT token
         };
@@ -237,7 +241,8 @@ const loadLocalInitialData = async () => {
             settings: { 
                 columnTitles: defaultColumnTitles, 
                 persistenceType: 'localStorage',
-                api_url: 'http://localhost:8080',
+                // *** HIER OOK DE WIJZIGING ***
+                api_url: 'https://api.mijndomein.nl',
                 api_username: '',
                 api_token: null,
             } 
@@ -484,12 +489,12 @@ const SettingsView = ({ settings, setSettings, setView, apiLogin, isLoading }) =
                                     name="api_url"
                                     value={settings.api_url}
                                     onChange={handleSettingsChange}
-                                    placeholder="http://<server>:8080"
+                                    placeholder="https://api.jouwdomein.nl"
                                     required
                                     className="w-full p-2 bg-gray-900 border border-gray-600 rounded-lg text-white font-mono text-sm"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
-                                    Moet linken naar de API Gateway, bijv. `http://&lt;server&gt;:8080`.
+                                    Moet linken naar de **externe** API, bijv. `https://api.jouwdomein.nl`.
                                 </p>
                             </div>
 
@@ -576,7 +581,7 @@ const App = () => {
     const [settings, setSettings] = useState({ 
         columnTitles: defaultColumnTitles, 
         persistenceType: 'localStorage',
-        api_url: 'http://localhost:8080',
+        api_url: 'https://api.mijndomein.nl', // STANDAARD API URL GEWIJZIGD
         api_username: '',
         api_token: null,
     });
