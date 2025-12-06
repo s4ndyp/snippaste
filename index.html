@@ -2,7 +2,7 @@
 <html lang="nl" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CodeVault - Cloud Edition</title>
     
     <!-- Tailwind CSS -->
@@ -18,6 +18,9 @@
                             900: '#111827',
                             950: '#0B0F19',
                         }
+                    },
+                    screens: {
+                        'xs': '475px',
                     }
                 }
             }
@@ -35,43 +38,59 @@
         :root { --bg-code: #111827; }
         .theme-code-bg { background-color: var(--bg-code) !important; transition: background-color 0.3s ease; }
         pre code.hljs { background-color: var(--bg-code) !important; transition: background-color 0.3s ease; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #111827; }
         ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        
+        /* Animations */
         .fade-in { animation: fadeIn 0.3s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* UI Elements */
         #toast {
             visibility: hidden; min-width: 250px; background-color: #10B981; color: #fff;
             text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 100;
-            left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 17px;
+            left: 50%; bottom: 90px; /* Higher on mobile for nav bar */
+            transform: translateX(-50%); font-size: 17px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s;
         }
-        #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
+        @media (min-width: 1024px) {
+            #toast { bottom: 30px; }
+        }
+        #toast.show { visibility: visible; opacity: 1; }
         #toast.error { background-color: #EF4444; }
+        
         .filter-item.active { background-color: #374151; color: white; border-right: 3px solid #6366f1; }
         .tag-pill:hover { transform: translateY(-1px); }
         .secure-blur { filter: blur(4px); user-select: none; opacity: 0.5; pointer-events: none; }
+        
+        /* Dropdown */
         .dropdown-content {
             display: none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem;
             background-color: #1f2937; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
             z-index: 100; border-radius: 0.5rem; border: 1px solid #374151; overflow: hidden;
         }
         .dropdown-content.show { display: block; animation: fadeIn 0.2s ease-out; }
+
+        /* Mobile Nav Active State */
+        .mobile-nav-btn.active { color: #818cf8; background-color: rgba(31, 41, 55, 0.5); }
     </style>
 </head>
-<body class="bg-gray-950 text-gray-200 font-sans antialiased min-h-screen flex flex-col">
+<body class="bg-gray-950 text-gray-200 font-sans antialiased min-h-screen flex flex-col overflow-hidden">
 
     <!-- Navbar -->
-    <nav class="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-40">
-        <div class="max-w-[1600px] mx-auto flex justify-between items-center">
+    <nav class="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-40 shrink-0 h-[70px]">
+        <div class="max-w-[1600px] mx-auto flex justify-between items-center h-full">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-code text-indigo-500 text-2xl"></i>
                 <h1 class="text-xl font-bold text-white tracking-wide">Code<span class="text-indigo-500">Vault</span></h1>
-                <span id="app-version" class="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full ml-2">v3.0.0 Cloud</span>
+                <span id="app-version" class="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full ml-2 hidden sm:inline-block">v3.1 Mobile</span>
                 
                 <!-- Status Indicator -->
-                <div id="connection-status" class="ml-4 flex items-center gap-2 px-2 py-1 rounded bg-gray-800 border border-gray-700 text-gray-400 text-xs font-mono hidden sm:flex">
+                <div id="connection-status" class="ml-4 flex items-center gap-2 px-2 py-1 rounded bg-gray-800 border border-gray-700 text-gray-400 text-xs font-mono hidden md:flex">
                     <i class="fa-solid fa-circle-notch fa-spin"></i> Verbinden...
                 </div>
             </div>
@@ -84,7 +103,7 @@
                 </button>
 
                 <!-- Theme Selector -->
-                <div class="relative">
+                <div class="relative hidden sm:block">
                     <button onclick="toggleThemeDropdown()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors hover:bg-gray-800 border border-transparent hover:border-gray-700" title="Wijzig Code Achtergrond">
                         <i class="fa-solid fa-palette text-indigo-400"></i>
                         <span class="font-medium text-xs hidden sm:inline">Thema</span>
@@ -109,11 +128,13 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="flex-grow max-w-[1600px] mx-auto w-full p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-80px)]">
+    <!-- Added padding bottom on mobile to accommodate nav bar -->
+    <main class="flex-grow max-w-[1600px] mx-auto w-full p-2 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-70px)] pb-[80px] lg:pb-6 relative overflow-hidden">
         
         <!-- KOLOM 1: Editor (Invoer) -->
-        <div class="lg:col-span-3 flex flex-col h-full overflow-hidden">
-            <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 flex flex-col h-full shadow-lg overflow-y-auto">
+        <!-- Logic: Hidden on mobile by default (hidden), visible on large screens (lg:flex). JS toggles 'hidden'/'flex' for mobile view. -->
+        <div id="view-editor" class="lg:col-span-3 flex-col h-full overflow-hidden hidden lg:flex">
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-4 lg:p-5 flex flex-col h-full shadow-lg overflow-y-auto scrollbar-hide">
                 <h2 class="text-lg font-semibold text-white mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
                     <span class="flex items-center" id="form-title"><i class="fa-solid fa-pen-to-square mr-2 text-indigo-400"></i>Nieuwe Snippet</span>
                     <button onclick="openTagManager()" class="text-xs text-gray-500 hover:text-indigo-400 transition-colors" title="Beheer labels">
@@ -153,7 +174,7 @@
                     <button type="button" onclick="addInputBlock()" class="w-full py-2 border-2 border-dashed border-gray-700 text-gray-500 rounded-lg hover:border-indigo-500 hover:text-indigo-400 transition-colors text-xs font-bold uppercase tracking-wide">
                         <i class="fa-solid fa-plus mr-1"></i> Codeblok Toevoegen
                     </button>
-                    <div class="flex gap-2 mt-4">
+                    <div class="flex gap-2 mt-4 pb-2">
                         <button type="submit" id="submit-btn" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg">
                             <i class="fa-solid fa-save"></i> Opslaan
                         </button>
@@ -166,22 +187,23 @@
         </div>
 
         <!-- KOLOM 2: Smart Filter Dashboard -->
-        <div class="lg:col-span-3 flex flex-col h-full overflow-hidden">
+        <!-- Logic: Hidden on mobile by default (hidden), visible on large screens (lg:flex). -->
+        <div id="view-library" class="lg:col-span-3 flex-col h-full overflow-hidden hidden lg:flex">
             <div class="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-full shadow-lg">
                 <div class="p-4 border-b border-gray-800 bg-gray-850 rounded-t-xl">
                     <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Bibliotheek</h2>
                 </div>
                 <div class="overflow-y-auto flex-grow p-3 space-y-6">
                     <div class="space-y-1">
-                        <button onclick="setFilter('all')" id="filter-all" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors active">
+                        <button onclick="setFilter('all'); switchMobileTab('list')" id="filter-all" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors active">
                             <span class="flex items-center gap-3"><i class="fa-solid fa-layer-group w-4"></i> Alle Snippets</span>
                             <span id="count-all" class="text-xs bg-gray-800 px-2 py-0.5 rounded-full text-gray-500">0</span>
                         </button>
-                        <button onclick="setFilter('favorites')" id="filter-favorites" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                        <button onclick="setFilter('favorites'); switchMobileTab('list')" id="filter-favorites" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
                             <span class="flex items-center gap-3"><i class="fa-solid fa-star text-yellow-500 w-4"></i> Favorieten</span>
                             <span id="count-favorites" class="text-xs bg-gray-800 px-2 py-0.5 rounded-full text-gray-500">0</span>
                         </button>
-                        <button onclick="setFilter('secured')" id="filter-secured" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                        <button onclick="setFilter('secured'); switchMobileTab('list')" id="filter-secured" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
                             <span class="flex items-center gap-3"><i class="fa-solid fa-lock text-orange-500 w-4"></i> Beveiligd</span>
                             <span id="count-secured" class="text-xs bg-gray-800 px-2 py-0.5 rounded-full text-gray-500">0</span>
                         </button>
@@ -193,39 +215,56 @@
         </div>
 
         <!-- KOLOM 3: Snippet Lijst -->
-        <div class="lg:col-span-6 flex flex-col h-full overflow-hidden">
-            <div class="bg-gray-900 p-2 rounded-xl border border-gray-800 flex items-center gap-3 mb-4 shadow-sm">
+        <!-- Logic: Visible on mobile by default (flex). -->
+        <div id="view-list" class="lg:col-span-6 flex flex-col h-full overflow-hidden flex">
+            <div class="bg-gray-900 p-2 rounded-xl border border-gray-800 flex items-center gap-3 mb-4 shadow-sm shrink-0">
                 <div class="flex-grow relative">
                     <i class="fa-solid fa-search text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2 text-sm"></i>
                     <input type="text" id="search-bar" placeholder="Zoek op naam, code of tag..." class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
                 </div>
                 <div class="text-xs text-gray-400 px-3 border-l border-gray-700 font-medium" id="current-view-label">Alles</div>
             </div>
-            <div id="snippets-wrapper" class="flex-grow overflow-y-auto pr-2 space-y-4">
+            <div id="snippets-wrapper" class="flex-grow overflow-y-auto pr-2 space-y-4 pb-20 lg:pb-0">
                  <div id="empty-state" class="hidden text-center py-12 bg-gray-900 rounded-xl border border-gray-800 border-dashed">
                     <i class="fa-solid fa-filter text-3xl text-gray-600 mb-3"></i>
                     <h3 class="text-sm font-medium text-white">Geen snippets gevonden</h3>
                     <p class="text-xs text-gray-500 mt-1">Pas je filter aan of verbind met de database.</p>
                 </div>
-                <div id="snippets-container" class="space-y-4 pb-10"></div>
+                <div id="snippets-container" class="space-y-4"></div>
             </div>
         </div>
     </main>
 
+    <!-- MOBILE BOTTOM NAVIGATION (Only visible < lg) -->
+    <nav class="lg:hidden fixed bottom-0 w-full bg-gray-900 border-t border-gray-800 flex justify-around items-center z-50 pb-safe-area">
+        <button onclick="switchMobileTab('editor')" class="mobile-nav-btn flex flex-col items-center justify-center p-3 w-full text-gray-500 hover:text-indigo-400 transition-colors" id="nav-btn-editor">
+            <i class="fa-solid fa-pen-to-square text-lg mb-1"></i>
+            <span class="text-[10px] font-medium">Invoer</span>
+        </button>
+        <button onclick="switchMobileTab('list')" class="mobile-nav-btn active flex flex-col items-center justify-center p-3 w-full text-gray-500 hover:text-indigo-400 transition-colors" id="nav-btn-list">
+            <i class="fa-solid fa-list-ul text-lg mb-1"></i>
+            <span class="text-[10px] font-medium">Lijst</span>
+        </button>
+        <button onclick="switchMobileTab('library')" class="mobile-nav-btn flex flex-col items-center justify-center p-3 w-full text-gray-500 hover:text-indigo-400 transition-colors" id="nav-btn-library">
+            <i class="fa-solid fa-layer-group text-lg mb-1"></i>
+            <span class="text-[10px] font-medium">Filters</span>
+        </button>
+    </nav>
+
     <div id="toast"><i class="fa-solid fa-check-circle mr-2"></i> Gekopieerd!</div>
 
     <!-- Tag Manager Modal -->
-    <div id="tag-manager-modal" class="fixed inset-0 bg-gray-950/80 backdrop-blur-sm hidden items-center justify-center z-50">
-        <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md shadow-2xl p-6">
+    <div id="tag-manager-modal" class="fixed inset-0 bg-gray-950/80 backdrop-blur-sm hidden items-center justify-center z-[60]">
+        <div class="bg-gray-900 rounded-xl border border-gray-800 w-11/12 max-w-md shadow-2xl p-6">
             <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-800 pb-2">Beheer Labels</h3>
             <div id="tag-manager-list" class="space-y-3 max-h-80 overflow-y-auto pr-2"></div>
             <button onclick="closeTagManager()" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors">Sluiten</button>
         </div>
     </div>
 
-    <!-- Config Modal (NIEUW) -->
-    <div id="config-modal" class="fixed inset-0 bg-gray-950/90 backdrop-blur-sm hidden items-center justify-center z-[60]">
-        <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md shadow-2xl p-6">
+    <!-- Config Modal -->
+    <div id="config-modal" class="fixed inset-0 bg-gray-950/90 backdrop-blur-sm hidden items-center justify-center z-[70]">
+        <div class="bg-gray-900 rounded-xl border border-gray-800 w-11/12 max-w-md shadow-2xl p-6">
             <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
                 <span><i class="fa-solid fa-server mr-2 text-indigo-400"></i>Verbinding</span>
                 <span id="modal-status-indicator" class="text-xs text-red-500 font-normal">Niet verbonden</span>
@@ -242,7 +281,6 @@
                         <span class="inline-flex items-center px-3 text-sm text-gray-400 bg-gray-800 border border-r-0 border-gray-700 rounded-l-md">/api/</span>
                         <input type="text" id="api-endpoint" placeholder="codevault" value="codevault" class="w-full bg-gray-800 border border-gray-700 rounded-r-lg px-3 py-2 text-white text-sm focus:border-indigo-500 focus:outline-none">
                     </div>
-                    <p class="text-[10px] text-gray-500 mt-1">Standaard: codevault. Zorg dat dit endpoint bestaat of mag worden aangemaakt.</p>
                 </div>
 
                 <div class="border-t border-gray-800 pt-3 mt-2">
@@ -276,10 +314,10 @@
         const LOCAL_STORAGE_TAG_KEY = 'codevault_tag_config';
         const LOCAL_STORAGE_PIN_KEY = 'codevault_user_pin';
         const LOCAL_STORAGE_THEME_KEY = 'codevault_theme_color';
-        const LOCAL_STORAGE_API_KEY = 'codevault_api_config'; // { url, endpoint, token }
+        const LOCAL_STORAGE_API_KEY = 'codevault_api_config'; 
 
         let apiConfig = { url: 'http://localhost:5000', endpoint: 'codevault', token: '' };
-        let snippets = []; // Wordt nu gevuld via API
+        let snippets = []; 
         let tagConfig = {}; 
         let currentFilter = { type: 'all', value: null };
         let inputBlockCount = 0;
@@ -320,6 +358,42 @@
         const mainLanguageInput = document.getElementById('main-language');
         const isSecuredInput = document.getElementById('is-secured');
 
+        // --- MOBILE NAVIGATION LOGIC (NEW) ---
+        window.switchMobileTab = function(tabName) {
+            // Views
+            const vEditor = document.getElementById('view-editor');
+            const vLibrary = document.getElementById('view-library');
+            const vList = document.getElementById('view-list');
+            
+            // Buttons
+            const bEditor = document.getElementById('nav-btn-editor');
+            const bLibrary = document.getElementById('nav-btn-library');
+            const bList = document.getElementById('nav-btn-list');
+
+            // Reset classes (Hidden for all, remove active from buttons)
+            // Note: We use lg:flex to ensure desktop visibility regardless of these toggles
+            [vEditor, vLibrary, vList].forEach(el => {
+                el.classList.remove('flex');
+                el.classList.add('hidden');
+            });
+            [bEditor, bLibrary, bList].forEach(el => el.classList.remove('active'));
+
+            // Activate Selected
+            if(tabName === 'editor') {
+                vEditor.classList.remove('hidden');
+                vEditor.classList.add('flex');
+                bEditor.classList.add('active');
+            } else if (tabName === 'library') {
+                vLibrary.classList.remove('hidden');
+                vLibrary.classList.add('flex');
+                bLibrary.classList.add('active');
+            } else {
+                vList.classList.remove('hidden');
+                vList.classList.add('flex');
+                bList.classList.add('active');
+            }
+        }
+
         // --- INIT ---
         async function init() {
             if(!localStorage.getItem(LOCAL_STORAGE_PIN_KEY)) localStorage.setItem(LOCAL_STORAGE_PIN_KEY, '0000');
@@ -327,10 +401,10 @@
             if(savedTheme) setTheme(savedTheme);
 
             loadTagConfig();
-            loadApiConfig(); // Laad API settings uit LS
+            loadApiConfig(); 
             addInputBlock(); 
 
-            await refreshData(); // Probeer data op te halen
+            await refreshData(); 
 
             renderClickableTags();
             updateGlobalLockUI();
@@ -345,14 +419,13 @@
                     apiConfig = { ...apiConfig, ...parsed };
                 } catch(e) { console.error("Config parse error", e); }
             }
-            // Vul velden in modal
             document.getElementById('api-url').value = apiConfig.url;
             document.getElementById('api-endpoint').value = apiConfig.endpoint;
             document.getElementById('api-token').value = apiConfig.token;
         }
 
         window.saveApiConfig = async function() {
-            const url = document.getElementById('api-url').value.replace(/\/$/, ""); // Strip trailing slash
+            const url = document.getElementById('api-url').value.replace(/\/$/, ""); 
             const endpoint = document.getElementById('api-endpoint').value;
             const token = document.getElementById('api-token').value;
 
@@ -411,20 +484,14 @@
 
                 if (res.ok) {
                     const data = await res.json();
-                    // Map API structuur {id: "...", data: {...}} naar interne structuur {id: "...", ...}
-                    snippets = data.map(item => ({
-                        id: item.id, // MongoDB string ID
-                        ...item.data
-                    }));
-                    
+                    snippets = data.map(item => ({ id: item.id, ...item.data }));
                     isConnected = true;
                     updateStatusUI(true, "Verbonden");
                     renderDashboard();
                     renderSnippets();
                 } else if(res.status === 404) {
-                     // Endpoint bestaat misschien nog niet, is ok.
                     snippets = [];
-                    isConnected = true; // Wel verbonden met gateway, maar endpoint is leeg/nieuw
+                    isConnected = true; 
                     updateStatusUI(true, "Endpoint Leeg/Nieuw");
                     renderDashboard();
                     renderSnippets();
@@ -434,7 +501,7 @@
             } catch (e) {
                 console.error("Fetch error", e);
                 isConnected = false;
-                snippets = []; // Of behoud oude data? Liever leegmaken om verwarring te voorkomen
+                snippets = []; 
                 updateStatusUI(false, "Offline / Auth Fout");
                 renderDashboard();
                 renderSnippets();
@@ -525,8 +592,6 @@
             toast.className = isError ? "error show" : "show";
             setTimeout(() => { toast.className = ""; }, 3000);
         }
-
-        // --- EXISTING LOGIC (Adapted) ---
 
         // Theme
         window.toggleThemeDropdown = function() {
@@ -647,7 +712,7 @@
             Object.keys(langCounts).sort().forEach(lang => {
                 const btn = document.createElement('button');
                 btn.className = `filter-item w-full flex justify-between items-center px-3 py-1.5 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors ${currentFilter.type === 'language' && currentFilter.value === lang ? 'active' : ''}`;
-                btn.onclick = () => setFilter('language', lang);
+                btn.onclick = () => { setFilter('language', lang); switchMobileTab('list'); };
                 btn.innerHTML = `<span class="capitalize flex items-center gap-3"><i class="fa-solid fa-code w-4 text-gray-600"></i> ${lang}</span><span class="text-xs text-gray-600">${langCounts[lang]}</span>`;
                 languageListEl.appendChild(btn);
             });
@@ -659,7 +724,7 @@
                 const color = getTagColor(tag);
                 const span = document.createElement('button');
                 span.className = `tag-pill text-[11px] px-2 py-1 rounded-md border transition-all ${color.bg} ${color.border} ${color.text} ${currentFilter.type === 'tag' && currentFilter.value === tag ? 'bg-opacity-70 border-opacity-70 text-white' : 'hover:brightness-125'}`;
-                span.onclick = () => setFilter('tag', tag);
+                span.onclick = () => { setFilter('tag', tag); switchMobileTab('list'); };
                 span.innerHTML = `#${tag} <span class="opacity-50 ml-1 text-gray-400">${tagCounts[tag]}</span>`;
                 tagCloudEl.appendChild(span);
             });
@@ -687,7 +752,7 @@
                 return matches && txtMatch;
             });
             
-            filtered.sort((a,b) => (b.isFavorite === a.isFavorite) ? 0 : (a.isFavorite ? -1 : 1)); // Favs bovenaan, daarna database volgorde (created_at)
+            filtered.sort((a,b) => (b.isFavorite === a.isFavorite) ? 0 : (a.isFavorite ? -1 : 1));
             
             if(filtered.length === 0) { emptyState.classList.remove('hidden'); return; }
             emptyState.classList.add('hidden');
@@ -699,7 +764,7 @@
                 
                 let tagsHtml = (snippet.tags||[]).map(t => {
                     const c = getTagColor(t);
-                    return `<span class="text-[10px] px-1.5 py-0.5 rounded cursor-pointer ${c.bg} ${c.border} ${c.text} hover:bg-indigo-900/50" onclick="setFilter('tag', '${t}')">#${t}</span>`;
+                    return `<span class="text-[10px] px-1.5 py-0.5 rounded cursor-pointer ${c.bg} ${c.border} ${c.text} hover:bg-indigo-900/50" onclick="setFilter('tag', '${t}'); event.stopPropagation();">#${t}</span>`;
                 }).join('');
                 if(tagsHtml) tagsHtml = `<div class="flex gap-2 mt-1">${tagsHtml}</div>`;
 
@@ -713,7 +778,7 @@
                     }).join('');
                 }
 
-                const editAction = isContentHidden ? "alert('Ontgrendel eerst de kluis')" : `editSnippet('${snippet.id}')`; // ID is nu string, dus quotes nodig
+                const editAction = isContentHidden ? "alert('Ontgrendel eerst de kluis')" : `editSnippet('${snippet.id}')`;
                 const lockIcon = snippet.isSecured ? 'fa-lock text-orange-500' : 'fa-lock-open text-gray-600 hover:text-orange-500';
 
                 el.innerHTML = `
@@ -773,7 +838,10 @@
 
             if(success) {
                 resetForm();
-                if(!editingSnippetId) setFilter('all');
+                if(!editingSnippetId) {
+                    setFilter('all');
+                    switchMobileTab('list'); // Auto switch back to list on mobile
+                }
             }
         });
 
@@ -798,9 +866,17 @@
             submitBtn.classList.replace('bg-indigo-600', 'bg-yellow-600');
             submitBtn.classList.replace('hover:bg-indigo-700', 'hover:bg-yellow-700');
             cancelEditBtn.classList.remove('hidden');
-            document.querySelector('main').scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Auto switch to editor tab on mobile
+            switchMobileTab('editor');
+            
+            // Scroll to top
+            // document.querySelector('main').scrollTo({ top: 0, behavior: 'smooth' });
         }
-        window.cancelEdit = function() { resetForm(); }
+        window.cancelEdit = function() { 
+            resetForm(); 
+            switchMobileTab('list');
+        }
         function resetForm() {
             editingSnippetId = null;
             document.getElementById('snippet-form').reset();
@@ -853,7 +929,7 @@
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
         
-        // Tag management helpers (renderClickableTags etc) similar to before...
+        // Tag helpers
         function renderClickableTags() {
             existingTagsListEl.innerHTML = '';
             getUniqueTags().forEach(tag => {
@@ -873,7 +949,6 @@
             btn.style.transform = 'scale(0.9)'; setTimeout(() => btn.style.transform = 'scale(1)', 100);
         }
         
-        // Tag Manager modal functions...
         window.openTagManager = function() { renderTagManagerList(); tagManagerModal.classList.remove('hidden'); tagManagerModal.classList.add('flex'); }
         window.closeTagManager = function() { tagManagerModal.classList.add('hidden'); tagManagerModal.classList.remove('flex'); renderDashboard(); renderClickableTags(); renderSnippets(); }
         function renderTagManagerList() {
