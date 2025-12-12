@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CodeVault - Cloud Edition</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -27,11 +26,9 @@
         }
     </script>
 
-    <!-- Highlight.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-    <!-- FontAwesome icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -65,7 +62,6 @@
         
         .filter-item.active { background-color: #374151; color: white; border-right: 3px solid #6366f1; }
         .tag-pill:hover { transform: translateY(-1px); }
-        .secure-blur { filter: blur(4px); user-select: none; opacity: 0.5; pointer-events: none; }
         
         /* Dropdown */
         .dropdown-content {
@@ -81,28 +77,24 @@
 </head>
 <body class="bg-gray-950 text-gray-200 font-sans antialiased min-h-screen flex flex-col overflow-hidden">
 
-    <!-- Navbar -->
     <nav class="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-40 shrink-0 h-[70px]">
         <div class="max-w-[1600px] mx-auto flex justify-between items-center h-full">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-code text-indigo-500 text-2xl"></i>
                 <h1 class="text-xl font-bold text-white tracking-wide">Code<span class="text-indigo-500">Vault</span></h1>
-                <span id="app-version" class="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full ml-2 hidden sm:inline-block">v3.1 Mobile</span>
+                <span id="app-version" class="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full ml-2 hidden sm:inline-block">v3.2 Lite</span>
                 
-                <!-- Status Indicator -->
                 <div id="connection-status" class="ml-4 flex items-center gap-2 px-2 py-1 rounded bg-gray-800 border border-gray-700 text-gray-400 text-xs font-mono hidden md:flex">
                     <i class="fa-solid fa-circle-notch fa-spin"></i> Verbinden...
                 </div>
             </div>
             
             <div class="flex items-center gap-3 text-sm text-gray-400">
-                <!-- API Connection Button -->
                 <button onclick="openConfigModal()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors hover:bg-gray-800 border border-transparent hover:border-gray-700 text-indigo-400" title="Verbindingsinstellingen">
                     <i class="fa-solid fa-server"></i>
                     <span class="font-medium text-xs hidden sm:inline">Server</span>
                 </button>
 
-                <!-- Theme Selector -->
                 <div class="relative hidden sm:block">
                     <button onclick="toggleThemeDropdown()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors hover:bg-gray-800 border border-transparent hover:border-gray-700" title="Wijzig Code Achtergrond">
                         <i class="fa-solid fa-palette text-indigo-400"></i>
@@ -115,24 +107,52 @@
                         <button onclick="setTheme('#1f1a1a')" class="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#1f1a1a] border border-gray-500"></span> Mocha</button>
                     </div>
                 </div>
-
-                <!-- Global Lock Button -->
-                <div class="border-l border-gray-700 pl-3">
-                    <button id="global-lock-btn" onclick="toggleGlobalLock()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors bg-red-900/30 text-red-400 hover:bg-red-900/50 border border-red-900/50" title="Klik om te ontgrendelen">
-                        <i class="fa-solid fa-lock"></i>
-                        <span class="font-bold text-xs uppercase tracking-wide hidden sm:inline">Gesloten</span>
-                    </button>
-                </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <!-- Added padding bottom on mobile to accommodate nav bar -->
     <main class="flex-grow max-w-[1600px] mx-auto w-full p-2 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-70px)] pb-[80px] lg:pb-6 relative overflow-hidden">
         
-        <!-- KOLOM 1: Editor (Invoer) -->
-        <!-- Logic: Hidden on mobile by default (hidden), visible on large screens (lg:flex). JS toggles 'hidden'/'flex' for mobile view. -->
+        <div id="view-library" class="lg:col-span-3 flex-col h-full overflow-hidden hidden lg:flex">
+            <div class="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-full shadow-lg">
+                <div class="p-4 border-b border-gray-800 bg-gray-850 rounded-t-xl">
+                    <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Bibliotheek</h2>
+                </div>
+                <div class="overflow-y-auto flex-grow p-3 space-y-6">
+                    <div class="space-y-1">
+                        <button onclick="setFilter('all'); switchMobileTab('list')" id="filter-all" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors active">
+                            <span class="flex items-center gap-3"><i class="fa-solid fa-layer-group w-4"></i> Alle Snippets</span>
+                            <span id="count-all" class="text-xs bg-gray-800 px-2 py-0.5 rounded-full text-gray-500">0</span>
+                        </button>
+                        <button onclick="setFilter('favorites'); switchMobileTab('list')" id="filter-favorites" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                            <span class="flex items-center gap-3"><i class="fa-solid fa-star text-yellow-500 w-4"></i> Favorieten</span>
+                            <span id="count-favorites" class="text-xs bg-gray-800 px-2 py-0.5 rounded-full text-gray-500">0</span>
+                        </button>
+                    </div>
+                    <div><h3 class="text-xs font-bold text-gray-600 uppercase mb-2 px-2">Talen</h3><div id="language-list" class="space-y-1"></div></div>
+                    <div><h3 class="text-xs font-bold text-gray-600 uppercase mb-2 px-2">Labels</h3><div id="tag-cloud" class="flex flex-wrap gap-2 px-1"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-list" class="lg:col-span-6 flex flex-col h-full overflow-hidden flex">
+            <div class="bg-gray-900 p-2 rounded-xl border border-gray-800 flex items-center gap-3 mb-4 shadow-sm shrink-0">
+                <div class="flex-grow relative">
+                    <i class="fa-solid fa-search text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2 text-sm"></i>
+                    <input type="text" id="search-bar" placeholder="Zoek op naam, code of tag..." class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div class="text-xs text-gray-400 px-3 border-l border-gray-700 font-medium" id="current-view-label">Alles</div>
+            </div>
+            <div id="snippets-wrapper" class="flex-grow overflow-y-auto pr-2 space-y-4 pb-20 lg:pb-0">
+                 <div id="empty-state" class="hidden text-center py-12 bg-gray-900 rounded-xl border border-gray-800 border-dashed">
+                    <i class="fa-solid fa-filter text-3xl text-gray-600 mb-3"></i>
+                    <h3 class="text-sm font-medium text-white">Geen snippets gevonden</h3>
+                    <p class="text-xs text-gray-500 mt-1">Pas je filter aan of verbind met de database.</p>
+                </div>
+                <div id="snippets-container" class="space-y-4"></div>
+            </div>
+        </div>
+
         <div id="view-editor" class="lg:col-span-3 flex-col h-full overflow-hidden hidden lg:flex">
             <div class="bg-gray-900 rounded-xl border border-gray-800 p-4 lg:p-5 flex flex-col h-full shadow-lg overflow-y-auto scrollbar-hide">
                 <h2 class="text-lg font-semibold text-white mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
@@ -166,10 +186,7 @@
                         <input type="text" id="tags" placeholder="Bijv. ui, auth (gescheiden door komma)" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm">
                         <div id="existing-tags-list" class="flex flex-wrap gap-2 pt-2"></div>
                     </div>
-                    <div class="flex items-center gap-2">
-                         <input type="checkbox" id="is-secured" class="w-4 h-4 text-indigo-600 rounded bg-gray-800 border-gray-700 focus:ring-indigo-500">
-                         <label for="is-secured" class="text-xs text-gray-400 select-none cursor-pointer"><i class="fa-solid fa-lock mr-1 text-yellow-500"></i> Beveilig deze snippet</label>
-                    </div>
+                    
                     <div id="input-blocks-container" class="space-y-4 flex-grow overflow-y-auto pr-1"></div>
                     <button type="button" onclick="addInputBlock()" class="w-full py-2 border-2 border-dashed border-gray-700 text-gray-500 rounded-lg hover:border-indigo-500 hover:text-indigo-400 transition-colors text-xs font-bold uppercase tracking-wide">
                         <i class="fa-solid fa-plus mr-1"></i> Codeblok Toevoegen
@@ -186,74 +203,25 @@
             </div>
         </div>
 
-        <!-- KOLOM 2: Smart Filter Dashboard -->
-        <!-- Logic: Hidden on mobile by default (hidden), visible on large screens (lg:flex). -->
-        <div id="view-library" class="lg:col-span-3 flex-col h-full overflow-hidden hidden lg:flex">
-            <div class="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-full shadow-lg">
-                <div class="p-4 border-b border-gray-800 bg-gray-850 rounded-t-xl">
-                    <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Bibliotheek</h2>
-                </div>
-                <div class="overflow-y-auto flex-grow p-3 space-y-6">
-                    <div class="space-y-1">
-                        <button onclick="setFilter('all'); switchMobileTab('list')" id="filter-all" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors active">
-                            <span class="flex items-center gap-3"><i class="fa-solid fa-layer-group w-4"></i> Alle Snippets</span>
-                            <span id="count-all" class="text-xs bg-gray-800 px-2 py-0.5 rounded-full text-gray-500">0</span>
-                        </button>
-                        <button onclick="setFilter('favorites'); switchMobileTab('list')" id="filter-favorites" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
-                            <span class="flex items-center gap-3"><i class="fa-solid fa-star text-yellow-500 w-4"></i> Favorieten</span>
-                            <span id="count-favorites" class="text-xs bg-gray-800 px-2 py-0.5 rounded-full text-gray-500">0</span>
-                        </button>
-                        <button onclick="setFilter('secured'); switchMobileTab('list')" id="filter-secured" class="filter-item w-full flex justify-between items-center px-3 py-2 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
-                            <span class="flex items-center gap-3"><i class="fa-solid fa-lock text-orange-500 w-4"></i> Beveiligd</span>
-                            <span id="count-secured" class="text-xs bg-gray-800 px-2 py-0.5 rounded-full text-gray-500">0</span>
-                        </button>
-                    </div>
-                    <div><h3 class="text-xs font-bold text-gray-600 uppercase mb-2 px-2">Talen</h3><div id="language-list" class="space-y-1"></div></div>
-                    <div><h3 class="text-xs font-bold text-gray-600 uppercase mb-2 px-2">Labels</h3><div id="tag-cloud" class="flex flex-wrap gap-2 px-1"></div></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- KOLOM 3: Snippet Lijst -->
-        <!-- Logic: Visible on mobile by default (flex). -->
-        <div id="view-list" class="lg:col-span-6 flex flex-col h-full overflow-hidden flex">
-            <div class="bg-gray-900 p-2 rounded-xl border border-gray-800 flex items-center gap-3 mb-4 shadow-sm shrink-0">
-                <div class="flex-grow relative">
-                    <i class="fa-solid fa-search text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2 text-sm"></i>
-                    <input type="text" id="search-bar" placeholder="Zoek op naam, code of tag..." class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                </div>
-                <div class="text-xs text-gray-400 px-3 border-l border-gray-700 font-medium" id="current-view-label">Alles</div>
-            </div>
-            <div id="snippets-wrapper" class="flex-grow overflow-y-auto pr-2 space-y-4 pb-20 lg:pb-0">
-                 <div id="empty-state" class="hidden text-center py-12 bg-gray-900 rounded-xl border border-gray-800 border-dashed">
-                    <i class="fa-solid fa-filter text-3xl text-gray-600 mb-3"></i>
-                    <h3 class="text-sm font-medium text-white">Geen snippets gevonden</h3>
-                    <p class="text-xs text-gray-500 mt-1">Pas je filter aan of verbind met de database.</p>
-                </div>
-                <div id="snippets-container" class="space-y-4"></div>
-            </div>
-        </div>
     </main>
 
-    <!-- MOBILE BOTTOM NAVIGATION (Only visible < lg) -->
     <nav class="lg:hidden fixed bottom-0 w-full bg-gray-900 border-t border-gray-800 flex justify-around items-center z-50 pb-safe-area">
-        <button onclick="switchMobileTab('editor')" class="mobile-nav-btn flex flex-col items-center justify-center p-3 w-full text-gray-500 hover:text-indigo-400 transition-colors" id="nav-btn-editor">
-            <i class="fa-solid fa-pen-to-square text-lg mb-1"></i>
-            <span class="text-[10px] font-medium">Invoer</span>
+        <button onclick="switchMobileTab('library')" class="mobile-nav-btn flex flex-col items-center justify-center p-3 w-full text-gray-500 hover:text-indigo-400 transition-colors" id="nav-btn-library">
+            <i class="fa-solid fa-layer-group text-lg mb-1"></i>
+            <span class="text-[10px] font-medium">Filters</span>
         </button>
         <button onclick="switchMobileTab('list')" class="mobile-nav-btn active flex flex-col items-center justify-center p-3 w-full text-gray-500 hover:text-indigo-400 transition-colors" id="nav-btn-list">
             <i class="fa-solid fa-list-ul text-lg mb-1"></i>
             <span class="text-[10px] font-medium">Lijst</span>
         </button>
-        <button onclick="switchMobileTab('library')" class="mobile-nav-btn flex flex-col items-center justify-center p-3 w-full text-gray-500 hover:text-indigo-400 transition-colors" id="nav-btn-library">
-            <i class="fa-solid fa-layer-group text-lg mb-1"></i>
-            <span class="text-[10px] font-medium">Filters</span>
+        <button onclick="switchMobileTab('editor')" class="mobile-nav-btn flex flex-col items-center justify-center p-3 w-full text-gray-500 hover:text-indigo-400 transition-colors" id="nav-btn-editor">
+            <i class="fa-solid fa-pen-to-square text-lg mb-1"></i>
+            <span class="text-[10px] font-medium">Invoer</span>
         </button>
     </nav>
 
     <div id="toast"><i class="fa-solid fa-check-circle mr-2"></i> Gekopieerd!</div>
 
-    <!-- Tag Manager Modal -->
     <div id="tag-manager-modal" class="fixed inset-0 bg-gray-950/80 backdrop-blur-sm hidden items-center justify-center z-[60]">
         <div class="bg-gray-900 rounded-xl border border-gray-800 w-11/12 max-w-md shadow-2xl p-6">
             <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-800 pb-2">Beheer Labels</h3>
@@ -262,7 +230,6 @@
         </div>
     </div>
 
-    <!-- Config Modal -->
     <div id="config-modal" class="fixed inset-0 bg-gray-950/90 backdrop-blur-sm hidden items-center justify-center z-[70]">
         <div class="bg-gray-900 rounded-xl border border-gray-800 w-11/12 max-w-md shadow-2xl p-6">
             <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
@@ -312,7 +279,6 @@
     <script type="module">
         // --- CONFIGURATIE & STATE ---
         const LOCAL_STORAGE_TAG_KEY = 'codevault_tag_config';
-        const LOCAL_STORAGE_PIN_KEY = 'codevault_user_pin';
         const LOCAL_STORAGE_THEME_KEY = 'codevault_theme_color';
         const LOCAL_STORAGE_API_KEY = 'codevault_api_config'; 
 
@@ -322,7 +288,6 @@
         let currentFilter = { type: 'all', value: null };
         let inputBlockCount = 0;
         let editingSnippetId = null;
-        let isGlobalLocked = true;
         let isConnected = false;
         
         const COLOR_CLASSES = ['indigo', 'green', 'yellow', 'red', 'blue', 'pink', 'purple', 'teal'];
@@ -337,14 +302,12 @@
         const tagCloudEl = document.getElementById('tag-cloud');
         const countAllEl = document.getElementById('count-all');
         const countFavEl = document.getElementById('count-favorites');
-        const countSecEl = document.getElementById('count-secured');
         const viewLabel = document.getElementById('current-view-label');
         const tagsInput = document.getElementById('tags');
         const existingTagsListEl = document.getElementById('existing-tags-list');
         const inputBlocksContainer = document.getElementById('input-blocks-container');
         const tagManagerModal = document.getElementById('tag-manager-modal');
         const tagManagerListEl = document.getElementById('tag-manager-list');
-        const globalLockBtn = document.getElementById('global-lock-btn');
         const configModal = document.getElementById('config-modal');
         const statusIndicator = document.getElementById('connection-status');
         const modalStatusIndicator = document.getElementById('modal-status-indicator');
@@ -356,9 +319,8 @@
         const snippetIdInput = document.getElementById('snippet-id');
         const titleInput = document.getElementById('title');
         const mainLanguageInput = document.getElementById('main-language');
-        const isSecuredInput = document.getElementById('is-secured');
 
-        // --- MOBILE NAVIGATION LOGIC (NEW) ---
+        // --- MOBILE NAVIGATION LOGIC ---
         window.switchMobileTab = function(tabName) {
             // Views
             const vEditor = document.getElementById('view-editor');
@@ -370,8 +332,7 @@
             const bLibrary = document.getElementById('nav-btn-library');
             const bList = document.getElementById('nav-btn-list');
 
-            // Reset classes (Hidden for all, remove active from buttons)
-            // Note: We use lg:flex to ensure desktop visibility regardless of these toggles
+            // Reset classes
             [vEditor, vLibrary, vList].forEach(el => {
                 el.classList.remove('flex');
                 el.classList.add('hidden');
@@ -396,7 +357,6 @@
 
         // --- INIT ---
         async function init() {
-            if(!localStorage.getItem(LOCAL_STORAGE_PIN_KEY)) localStorage.setItem(LOCAL_STORAGE_PIN_KEY, '0000');
             const savedTheme = localStorage.getItem(LOCAL_STORAGE_THEME_KEY);
             if(savedTheme) setTheme(savedTheme);
 
@@ -407,7 +367,6 @@
             await refreshData(); 
 
             renderClickableTags();
-            updateGlobalLockUI();
         }
 
         // --- API CONFIG & AUTH ---
@@ -642,43 +601,6 @@
             return Array.from(tagSet).filter(t => t.length > 0).sort();
         }
 
-        // Security
-        window.toggleGlobalLock = function() {
-            if (isGlobalLocked) {
-                const userPin = prompt("Voer pincode in om te ontgrendelen:");
-                if (userPin === localStorage.getItem(LOCAL_STORAGE_PIN_KEY)) {
-                    isGlobalLocked = false;
-                    updateGlobalLockUI();
-                    renderSnippets();
-                } else if (userPin !== null) alert("Onjuiste pincode.");
-            } else {
-                const action = prompt("Type 'lock' om te sluiten of 'pin' om pincode te wijzigen:", "lock");
-                if (action && action.toLowerCase() === 'pin') changePin();
-                else { isGlobalLocked = true; updateGlobalLockUI(); renderSnippets(); }
-            }
-        }
-        window.changePin = function() {
-            const currentPin = localStorage.getItem(LOCAL_STORAGE_PIN_KEY);
-            if (prompt("Voer huidige pincode in:") === currentPin) {
-                const newPin = prompt("Nieuwe pincode (min 4 cijfers):");
-                if (newPin && newPin.length >= 4) {
-                    localStorage.setItem(LOCAL_STORAGE_PIN_KEY, newPin);
-                    alert("Pincode gewijzigd!");
-                } else alert("Ongeldige pincode.");
-            } else alert("Huidige pincode onjuist.");
-        }
-        function updateGlobalLockUI() {
-            if (isGlobalLocked) {
-                globalLockBtn.className = "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors bg-red-900/30 text-red-400 hover:bg-red-900/50 border border-red-900/50";
-                globalLockBtn.innerHTML = '<i class="fa-solid fa-lock"></i> <span class="font-bold text-xs uppercase tracking-wide hidden sm:inline">Gesloten</span>';
-                globalLockBtn.title = "Klik om te ontgrendelen";
-            } else {
-                globalLockBtn.className = "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors bg-green-900/30 text-green-400 hover:bg-green-900/50 border border-green-900/50";
-                globalLockBtn.innerHTML = '<i class="fa-solid fa-lock-open"></i> <span class="font-bold text-xs uppercase tracking-wide hidden sm:inline">Open</span>';
-                globalLockBtn.title = "Klik om te sluiten of PIN te wijzigen";
-            }
-        }
-
         // Input Blocks
         window.addInputBlock = function(defaultDesc = '', defaultCode = '') {
             inputBlockCount++;
@@ -704,7 +626,6 @@
         function renderDashboard() {
             countAllEl.innerText = snippets.length;
             countFavEl.innerText = snippets.filter(s => s.isFavorite).length;
-            countSecEl.innerText = snippets.filter(s => s.isSecured).length;
 
             const langCounts = {};
             snippets.forEach(s => { const lang = s.language || 'text'; langCounts[lang] = (langCounts[lang] || 0) + 1; });
@@ -731,7 +652,6 @@
             
             document.getElementById('filter-all').classList.toggle('active', currentFilter.type === 'all');
             document.getElementById('filter-favorites').classList.toggle('active', currentFilter.type === 'favorites');
-            document.getElementById('filter-secured').classList.toggle('active', currentFilter.type === 'secured');
         }
 
         function renderSnippets() {
@@ -742,7 +662,6 @@
                 if(!s.blocks) return false;
                 let matches = true;
                 if(currentFilter.type === 'favorites') matches = s.isFavorite;
-                if(currentFilter.type === 'secured') matches = s.isSecured;
                 if(currentFilter.type === 'language') matches = s.language === currentFilter.value;
                 if(currentFilter.type === 'tag') matches = s.tags && s.tags.includes(currentFilter.value);
                 
@@ -758,7 +677,6 @@
             emptyState.classList.add('hidden');
 
             filtered.forEach(snippet => {
-                const isContentHidden = isGlobalLocked && snippet.isSecured;
                 const el = document.createElement('div');
                 el.className = 'bg-gray-850 border border-gray-800 rounded-lg overflow-hidden hover:border-gray-600 transition-colors group fade-in mb-6 shadow-sm';
                 
@@ -768,30 +686,23 @@
                 }).join('');
                 if(tagsHtml) tagsHtml = `<div class="flex gap-2 mt-1">${tagsHtml}</div>`;
 
-                let blocksHtml = '';
-                if(isContentHidden) {
-                    blocksHtml = `<div class="p-8 text-center border-t border-gray-800"><i class="fa-solid fa-lock text-3xl text-gray-700 mb-3"></i><p class="text-sm text-gray-500 font-medium italic">Inhoud beveiligd</p><p class="text-xs text-gray-600 mt-1">Ontgrendel de kluis om te bekijken</p></div>`;
-                } else {
-                    blocksHtml = (snippet.blocks||[]).map((block, idx) => {
-                        const safeCode = (block.code||'').replace(/'/g, "\\'").replace(/\n/g, "\\n");
-                        return `<div class="border-t border-gray-800 first:border-t-0"><div class="flex justify-between items-center bg-gray-900/50 px-3 py-1.5"><span class="text-[10px] font-bold text-gray-400 font-mono tracking-wide">${escapeHtml(block.description||'Blok '+(idx+1))}</span><button onclick="copySnippet('${safeCode}')" class="text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-1"><i class="fa-regular fa-copy"></i> <span class="hidden sm:inline">Kopieer</span></button></div><div class="relative text-xs group/code"><pre class="m-0"><code class="language-${snippet.language||'text'} p-3 block overflow-x-auto max-h-[300px] scrollbar-thin theme-code-bg">${escapeHtml(block.code||'')}</code></pre></div></div>`;
-                    }).join('');
-                }
+                let blocksHtml = (snippet.blocks||[]).map((block, idx) => {
+                    const safeCode = (block.code||'').replace(/'/g, "\\'").replace(/\n/g, "\\n");
+                    return `<div class="border-t border-gray-800 first:border-t-0"><div class="flex justify-between items-center bg-gray-900/50 px-3 py-1.5"><span class="text-[10px] font-bold text-gray-400 font-mono tracking-wide">${escapeHtml(block.description||'Blok '+(idx+1))}</span><button onclick="copySnippet('${safeCode}')" class="text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-1"><i class="fa-regular fa-copy"></i> <span class="hidden sm:inline">Kopieer</span></button></div><div class="relative text-xs group/code"><pre class="m-0"><code class="language-${snippet.language||'text'} p-3 block overflow-x-auto max-h-[300px] scrollbar-thin theme-code-bg">${escapeHtml(block.code||'')}</code></pre></div></div>`;
+                }).join('');
 
-                const editAction = isContentHidden ? "alert('Ontgrendel eerst de kluis')" : `editSnippet('${snippet.id}')`;
-                const lockIcon = snippet.isSecured ? 'fa-lock text-orange-500' : 'fa-lock-open text-gray-600 hover:text-orange-500';
+                const editAction = `editSnippet('${snippet.id}')`;
 
                 el.innerHTML = `
                     <div class="p-3 bg-gray-900 border-b border-gray-800 flex justify-between items-start">
                         <div class="overflow-hidden flex-grow mr-2 min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="text-[10px] uppercase font-bold text-indigo-400 border border-indigo-900/50 bg-indigo-900/20 px-1.5 rounded flex-shrink-0">${snippet.language}</span>
-                                <h3 class="font-bold text-gray-200 text-sm truncate min-w-0 ${isContentHidden ? 'cursor-not-allowed' : 'cursor-pointer hover:text-indigo-400'} transition-colors" onclick="${editAction}">${escapeHtml(snippet.title||'Naamloos')}</h3>
+                                <h3 class="font-bold text-gray-200 text-sm truncate min-w-0 cursor-pointer hover:text-indigo-400 transition-colors" onclick="${editAction}">${escapeHtml(snippet.title||'Naamloos')}</h3>
                             </div>
                             ${tagsHtml}
                         </div>
                         <div class="flex gap-1 flex-shrink-0 ml-2">
-                            <button onclick="toggleSnippetLock('${snippet.id}')" class="p-1.5 rounded hover:bg-gray-800 transition-colors"><i class="fa-solid ${lockIcon}"></i></button>
                             <button onclick="toggleFavorite('${snippet.id}')" class="p-1.5 rounded hover:bg-gray-800 transition-colors ${snippet.isFavorite?'text-yellow-500':'text-gray-600 hover:text-yellow-500'}"><i class="fa-${snippet.isFavorite?'solid':'regular'} fa-star"></i></button>
                             <button onclick="deleteSnippet('${snippet.id}')" class="p-1.5 text-gray-600 hover:text-red-400 rounded hover:bg-gray-800 transition-colors"><i class="fa-solid fa-trash"></i></button>
                         </div>
@@ -809,7 +720,6 @@
             const title = document.getElementById('title').value.trim();
             const mainLanguage = document.getElementById('main-language').value; 
             const tagsInputVal = document.getElementById('tags').value;
-            const isSecured = document.getElementById('is-secured').checked;
             
             const blocks = [];
             document.querySelectorAll('#input-blocks-container > div').forEach(el => {
@@ -825,7 +735,7 @@
             tags.forEach(tag => getTagColor(tag));
 
             const snippetData = {
-                title, language: mainLanguage, blocks, tags, isSecured,
+                title, language: mainLanguage, blocks, tags,
                 isFavorite: editingSnippetId ? snippets.find(s => s.id === editingSnippetId).isFavorite : false
             };
 
@@ -849,13 +759,11 @@
         window.editSnippet = function(id) {
             const s = snippets.find(x => x.id === id);
             if(!s) return;
-            if (isGlobalLocked && s.isSecured) { alert("Beveiligd. Ontgrendel de kluis."); return; }
 
             snippetIdInput.value = s.id;
             titleInput.value = s.title;
             mainLanguageInput.value = s.language;
             tagsInput.value = s.tags.join(', ');
-            isSecuredInput.checked = s.isSecured;
 
             inputBlocksContainer.innerHTML = '';
             (s.blocks && s.blocks.length > 0 ? s.blocks : [{}]).forEach(b => addInputBlock(b.description, b.code));
@@ -869,9 +777,6 @@
             
             // Auto switch to editor tab on mobile
             switchMobileTab('editor');
-            
-            // Scroll to top
-            // document.querySelector('main').scrollTo({ top: 0, behavior: 'smooth' });
         }
         window.cancelEdit = function() { 
             resetForm(); 
@@ -895,13 +800,8 @@
             const s = snippets.find(x => x.id === id);
             if(s) await updateSnippetAPI(id, { isFavorite: !s.isFavorite });
         }
-        window.toggleSnippetLock = async function(id) {
-            const s = snippets.find(x => x.id === id);
-            if(s) await updateSnippetAPI(id, { isSecured: !s.isSecured });
-        }
         window.deleteSnippet = async function(id) {
             const s = snippets.find(x => x.id === id);
-            if (isGlobalLocked && s && s.isSecured) { alert("Beveiligd. Kan niet verwijderen."); return; }
             if(confirm('Snippet verwijderen?')) {
                 if(await deleteSnippetAPI(id)) { if(editingSnippetId === id) resetForm(); }
             }
@@ -912,7 +812,6 @@
             currentFilter = { type, value };
             if(type === 'all') viewLabel.innerText = 'Alles';
             else if(type === 'favorites') viewLabel.innerText = 'Favorieten';
-            else if(type === 'secured') viewLabel.innerText = 'Beveiligd';
             else if(type === 'language') viewLabel.innerText = `Taal: ${value}`;
             else if(type === 'tag') viewLabel.innerText = `Tag: #${value}`;
             renderDashboard(); renderSnippets();
