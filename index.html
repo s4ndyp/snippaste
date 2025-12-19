@@ -201,14 +201,16 @@
         window.renderSnippets = function() {
             const container = document.getElementById('snippets-container');
             container.innerHTML = '';
-
-            const filtered = snippets.filter(s => {
-                const searchStr = (s.title + ' ' + s.tags.join(' ') + ' ' + s.blocks.map(b => b.code).join(' ')).toLowerCase();
-                const matchesSearch = searchStr.includes(searchQuery);
-                const matchesFilter = currentFilter === 'all' || (currentFilter === 'favorites' && s.favorite);
-                return matchesSearch && matchesFilter;
-            });
-
+const filtered = snippets.filter(s => {
+    // Zoek in titel, tags (als array) en de code blokken
+    const matchesSearch = 
+        s.title.toLowerCase().includes(searchQuery) || 
+        s.tags.some(t => t.toLowerCase().includes(searchQuery)) ||
+        s.blocks.some(b => b.code.toLowerCase().includes(searchQuery));
+        
+    const matchesFilter = currentFilter === 'all' || (currentFilter === 'favorites' && s.favorite);
+    return matchesSearch && matchesFilter;
+});
             filtered.forEach(s => container.appendChild(createSnippetCard(s)));
             
             document.getElementById('count-all').textContent = snippets.length;
@@ -290,13 +292,15 @@
                 setTimeout(() => icon.className = 'fa-regular fa-copy', 2000);
             });
         };
-
-        window.setSearch = (val) => {
-            const input = document.getElementById('search-bar');
-            input.value = val;
-            searchQuery = val.toLowerCase();
-            renderSnippets();
-        };
+window.setSearch = (val) => {
+    const input = document.getElementById('search-bar');
+    // Als de waarde begint met #, haal deze weg voor het zoeken
+    const cleanSearch = val.startsWith('#') ? val.substring(1) : val;
+    
+    input.value = val; // We laten het hekje wel zien in de input voor de gebruiker
+    searchQuery = cleanSearch.toLowerCase();
+    renderSnippets();
+};
 
         document.getElementById('snippet-form').onsubmit = async (e) => {
             e.preventDefault();
