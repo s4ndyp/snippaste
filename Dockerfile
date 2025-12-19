@@ -9,7 +9,7 @@ COPY nginx.conf /etc/nginx/conf.d/
 
 # Kopieer de HTML (Frontend) bestanden naar de Nginx webroot
 # Alleen de index.html is nodig
-COPY index.html /usr/share/nginx/html/
+COPY *.* /usr/share/nginx/html/
 
 # Nginx draait standaard op poort 80
 EXPOSE 80
